@@ -2,13 +2,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <!-- Page Header -->
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">Performance Analysis</h1>
-            <p class="text-gray-600">Monitor attendance metrics</p>
+                <div class="section-header">
+            <h1 class="section-title">Performance Analysis</h1>
+             <p class="section-subtitle">Monitor attendance metrics</p>
         </div>
-
+  <!-- Page Header -->
+       
         <!-- Filters -->
-        <div class="bg-white shadow-sm rounded-lg mb-6">
+        <div class="bg-white shadow-sm rounded-lg mb-6 hall-card">
             <div class="p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Select year, semester, department, and subject to view attendance percentage:</h3>
                 <form id="filterForm" class="flex flex-wrap gap-4 items-end">
@@ -117,11 +118,38 @@
         </div>
 
         <!-- Performance Data -->
-        <div class="bg-white shadow-sm rounded-lg">
-            <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Subject Performance</h3>
+        
+            <div class="section-header">
+                <h1 class="section-title">Subject Performance</h1>
                 <div id="performanceData">
-                    <p class="text-gray-600">Select filters to view performance data.</p>
+                    <p class="section-subtitle">Select filters to view performance data.</p>
+                </div>
+            </div>
+        
+        <!-- Students Above Threshold Section -->
+        <div id="studentsAboveThresholdSection" class="bg-white shadow-sm rounded-lg mt-6 hidden hall-card">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Students with High Absence Rate (55%)</h3>
+                    <button id="sendAlertsBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        Send Alerts
+                    </button>
+                </div>
+                <div id="absenceMessage" class="mb-4">
+                    <p class="text-gray-600"></p>
+                </div>
+                <div id="studentsAboveThresholdList">
+                    <p class="text-gray-600">Select a subject to view students with high absence rates.</p>
+                </div>
+                <!-- Success Message -->
+                <div id="successMessage" class="mt-4 hidden">
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">Success!</strong>
+                        <span id="successText" class="block sm:inline"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -152,6 +180,7 @@
 
             subjectSelect.addEventListener('change', function() {
                 loadSubjectStats();
+                loadStudentsAboveThreshold();
                 exportCsvBtn.disabled = !subjectSelect.value;
             });
 
@@ -336,6 +365,117 @@
                 });
                 html += '</div>';
                 performanceData.innerHTML = html;
+            }
+
+            // Students above threshold functionality
+            const studentsAboveThresholdSection = document.getElementById('studentsAboveThresholdSection');
+            const absenceMessage = document.getElementById('absenceMessage');
+            const studentsAboveThresholdList = document.getElementById('studentsAboveThresholdList');
+            const sendAlertsBtn = document.getElementById('sendAlertsBtn');
+            const successMessage = document.getElementById('successMessage');
+            const successText = document.getElementById('successText');
+
+            function loadStudentsAboveThreshold() {
+                const subjectId = subjectSelect.value;
+                
+                if (!subjectId) {
+                    studentsAboveThresholdSection.classList.add('hidden');
+                    return;
+                }
+
+                const params = new URLSearchParams();
+                params.append('subject_id', subjectId);
+
+                fetch(`/admin/performance/students-above-threshold?${params.toString()}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.students && data.students.length > 0) {
+                        // Show the section
+                        studentsAboveThresholdSection.classList.remove('hidden');
+                        
+                        // Update the message
+                        absenceMessage.innerHTML = `<p class="text-lg text-red-600 font-medium">There are ${data.count} students with excessive absences in this subject</p>`;
+                        
+                        // Display the students list
+let listHtml = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-dark-200"><thead><tr><th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase">Student Name</th><th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase">Number of Absences</th><th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase">Absence %</th></tr></thead><tbody>';
+                        
+                        data.students.forEach(student => {
+                            listHtml += `
+                                <tr class="bg-white divide-y divide-dark-200">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-dark-900 font-medium">${student.student_name}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-dark-700">${student.absence_count}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold ${student.absence_percentage > 55 ? 'text-red-600' : 'text-orange-600'}">${student.absence_percentage}%</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        listHtml += '</tbody></table></div>';
+                        studentsAboveThresholdList.innerHTML = listHtml;
+                    } else {
+                        // Hide the section if no students above threshold
+                        studentsAboveThresholdSection.classList.add('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading students above threshold:', error);
+                });
+            }
+
+            // Send alerts button click handler
+            if (sendAlertsBtn) {
+                sendAlertsBtn.addEventListener('click', function() {
+                    const subjectId = subjectSelect.value;
+                    
+                    if (!subjectId) {
+                        alert('Please select the subject first.');
+                        return;
+                    }
+
+                    // Show confirmation dialog
+                    const confirmSend = confirm('Are you sure you sent the warnings to these students?');
+                    
+                    if (!confirmSend) {
+                        return;
+                    }
+
+                    // Send the request
+                    const formData = new FormData();
+                    formData.append('subject_id', subjectId);
+
+                    fetch('/admin/performance/send-alerts', {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success message
+                            successText.textContent = data.message;
+                            successMessage.classList.remove('hidden');
+                            
+                            // Hide success message after 5 seconds
+                            setTimeout(() => {
+                                successMessage.classList.add('hidden');
+                            }, 5000);
+                        } else {
+                            alert(data.message || 'حدث خطأ أثناء إرسال الإنذارات');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error sending alerts:', error);
+                        alert('حدث خطأ أثناء إرسال الإنذارات');
+                    });
+                });
             }
         });
     </script>

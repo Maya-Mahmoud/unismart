@@ -76,6 +76,11 @@ class Lecture extends Model
         return $this->hasMany(StudentSubjectAttendance::class, 'lecture_id');
     }
 
+    public function lectureFiles()
+    {
+        return $this->hasMany(LectureFile::class);
+    }
+
     /**
      * Check if this lecture overlaps with another lecture or booking.
      */

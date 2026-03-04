@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\AiKnowledge;
 use App\Models\Lecture;
+use App\Models\LectureFile;
 use App\Models\Hall;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -20,8 +21,8 @@ class StudentChatController extends Controller
             // جلب كل القوانين والتعليمات النشطة (للاستخدام في الرد العام فقط)
             $instructions = AiKnowledge::where('is_active', true)->get();
 
-            // جلب بيانات المحاضرات
-            $lectures = Lecture::with(['hall', 'subject', 'department', 'user'])->get();
+            // جلب بيانات المحاضرات مع الملفات
+            $lectures = Lecture::with(['hall', 'subject', 'department', 'user', 'lectureFiles'])->get();
 
             // جلب بيانات القاعات
             $halls = Hall::all();
@@ -34,7 +35,7 @@ class StudentChatController extends Controller
 
             // التحقق من نوع السؤال
             if ($specificSubject) {
-                // سؤال عن مادة محددة - إظهار الأستاذ
+                // سؤال عن مادة محددة - إظهار الأستاذ والمحاضرات والملفات
                 $reply = $this->getSubjectProfessor($lectures, $specificSubject);
             } elseif ($specificHall) {
                 // سؤال عن قاعة محددة
@@ -52,7 +53,7 @@ class StudentChatController extends Controller
                 $specificProcedure = $this->getSpecificProcedure($questionLower); 
                 
                 if ($specificProcedure) {
-                    $reply = $specificProcedure; // 👈 يتم استخدام الرد الصحيح (العربي مع الرابط)
+                    $reply = $specificProcedure;
                 } else {
                     // 2. إذا لم يوجد إجراء محدد، نعرض كل الإجراءات العامة
                     $reply = $this->getProceduresInfo($instructions); 
@@ -114,21 +115,15 @@ class StudentChatController extends Controller
         return $info;
     }
 
-    /**
-     * 🛑 الدالة المحدثة: تستخدم Eloquent للبحث عن السجل النشط
-     */
     private function getSpecificProcedure($question)
     {
         $questionLower = mb_strtolower($question);
         $actionKeywords = 'إعادة عملي|اعاده عملي|اعادة عملي|إعاده عملي';
 
-        // Check for specific procedures: إعادة عملي using regex for proper matching
         if (preg_match('/(' . $actionKeywords . ')/u', $questionLower) && strpos($questionLower, 'عملي') !== false) {
-
-            // البحث عن أحدث سجل نشط لـ 'practical_repeat'
             $instruction = AiKnowledge::where('topic', 'practical_repeat')
-                                      ->where('is_active', true) // يجب أن يكون السجل نشطاً
-                                      ->latest() // نجلب الأحدث
+                                      ->where('is_active', true)
+                                      ->latest()
                                       ->first();
 
             if ($instruction) {
@@ -136,9 +131,7 @@ class StudentChatController extends Controller
             }
         }
 
-        // Add more specific checks here for other procedures
-
-        return null; // No specific procedure found or activated
+        return null;
     }
 
     private function getProceduresInfo($instructions)
@@ -158,7 +151,6 @@ class StudentChatController extends Controller
 
     private function extractHallName($question)
     {
-        // البحث عن أسماء القاعات المختلفة في السؤال
         if (preg_match('/قاعة\s+([^?\s]+(?:\s+[^?\s]+)*)/u', $question, $matches)) {
             $hallName = trim($matches[1]);
             $hallName = str_replace(['و', 'في', 'على', 'رقم', '؟', '?', 'أين', 'وين', 'معلومات', 'تفاصيل'], '', $hallName);
@@ -168,7 +160,6 @@ class StudentChatController extends Controller
             }
         }
 
-        // ثانياً: البحث عن أنماط أخرى
         $patterns = [
             '/(?:أين|معلومات|تفاصيل)\s+(?:ال)?قاعة\s+(?:رقم\s+)?([a-zA-Z0-9\s]+)/u',
             '/(?:ال)?قاعة\s+(?:رقم\s+)?([a-zA-Z0-9\s]+)(?:\s+وين|\s+أين|\?)?/u',
@@ -191,12 +182,8 @@ class StudentChatController extends Controller
 
     private function extractSubjectName($question)
     {
-        // قائمة بأسماء المواد الشائعة
-        $subjects = [
-            'رياضيات', 'فيزياء', 'كيمياء', 'أحياء', 'تاريخ', 'جغرافيا',
-            'عربي', 'إنجليزي', 'فرنسي', 'علوم', 'اجتماعيات', 'فلسفة',
-            'اقتصاد', 'إدارة', 'محاسبة', 'قانون', 'طب', 'هندسة', 'حاسوب'
-        ];
+        // جلب كل المواد من قاعدة البيانات
+        $subjects = \App\Models\Subject::all()->pluck('name')->toArray();
 
         $questionLower = strtolower($question);
 
@@ -211,12 +198,20 @@ class StudentChatController extends Controller
 
     private function getSubjectProfessor($lectures, $subjectName)
     {
+        // التحقق من وجود المادة في قاعدة البيانات أولاً
+        $subjectExists = \App\Models\Subject::whereRaw('LOWER(name) = ?', [strtolower($subjectName)])->exists();
+        
+        if (!$subjectExists) {
+            return "المادة '{$subjectName}' غير موجودة في قاعدة البيانات.";
+        }
+
+        // جلب المحاضرات للمادة المحددة
         $foundLectures = $lectures->filter(function ($lecture) use ($subjectName) {
             return $lecture->subject && strtolower($lecture->subject->name) === strtolower($subjectName);
         });
 
         if ($foundLectures->isEmpty()) {
-            return "لم أجد محاضرات لمادة '{$subjectName}' في الجدول الحالي.";
+            return "لا توجد محاضرات لهذه المادة ({$subjectName}) حتى الآن.";
         }
 
         $info = "معلومات مادة '{$subjectName}':\n\n";
@@ -226,7 +221,19 @@ class StudentChatController extends Controller
             $info .= "👨‍🏫 الأستاذ: {$professorName}\n";
             $info .= "📚 المحاضرة: {$lecture->title}\n";
             $info .= "🏢 القاعة: " . ($lecture->hall ? $lecture->hall->hall_name . ' - ' . $lecture->hall->building : 'غير محدد') . "\n";
-            $info .= "⏰ الوقت: " . ($lecture->start_time ? $lecture->start_time->format('Y-m-d H:i') : 'غير محدد') . "\n\n";
+            $info .= "⏰ الوقت: " . ($lecture->start_time ? $lecture->start_time->format('Y-m-d H:i') : 'غير محدد') . "\n";
+            
+            // جلب الملفات المرفقة لهذه المحاضرة
+            $files = $lecture->lectureFiles;
+            if ($files && $files->count() > 0) {
+                $info .= "📁 الملفات المرفقة:\n";
+                foreach ($files as $file) {
+                    $info .= "   📄 {$file->file_name}\n";
+                }
+                $info .= "\n";
+            } else {
+                $info .= "📁 لا توجد ملفات لهذه المحاضرة حتى الآن.\n\n";
+            }
         }
 
         return $info;
@@ -234,22 +241,18 @@ class StudentChatController extends Controller
 
     private function getSpecificHallInfo($halls, $hallName)
     {
-        // البحث عن القاعة بالضبط أو جزئياً
         $foundHall = $halls->first(function ($hall) use ($hallName) {
             $hallNameLower = strtolower($hallName);
             $dbHallNameLower = strtolower($hall->hall_name);
 
-            // مطابقة دقيقة
             if ($dbHallNameLower === $hallNameLower) {
                 return true;
             }
 
-            // مطابقة جزئية (إذا كان الاسم في قاعدة البيانات يحتوي على الاسم المطلوب)
             if (strpos($dbHallNameLower, $hallNameLower) !== false) {
                 return true;
             }
 
-            // مطابقة عكسية (إذا كان الاسم المطلوب يحتوي على اسم قاعدة البيانات)
             if (strpos($hallNameLower, $dbHallNameLower) !== false) {
                 return true;
             }

@@ -189,4 +189,120 @@ class PerformanceController extends Controller
 
     return response()->stream($callback, 200, $headers);
 }
+
+    /**
+     * Get students with absence rate above 55% for a specific subject
+     */
+    public function getStudentsAboveThreshold(Request $request)
+    {
+        $subjectId = $request->subject_id;
+        
+        if (!$subjectId) {
+            return response()->json(['students' => [], 'count' => 0]);
+        }
+
+        $subject = Subject::find($subjectId);
+        if (!$subject) {
+            return response()->json(['error' => 'Subject not found'], 404);
+        }
+
+        $totalLectures = \App\Models\Lecture::where('subject_id', $subjectId)->count();
+        
+        if ($totalLectures === 0) {
+            return response()->json(['students' => [], 'count' => 0, 'message' => 'No lectures found for this subject']);
+        }
+
+        // Get all student attendance records for this subject
+        $attendanceRecords = StudentSubjectAttendance::with(['student.user', 'student.department'])
+            ->where('subject_id', $subjectId)
+            ->get()
+            ->map(function ($record) use ($totalLectures) {
+                $absencePercentage = ($record->absence_count / $totalLectures) * 100;
+                
+                return [
+                    'student_id' => $record->student->id,
+                    'student_name' => $record->student->user->name ?? 'Unknown',
+                    'absence_count' => $record->absence_count,
+                    'presence_count' => $record->presence_count,
+                    'total_lectures' => $totalLectures,
+                    'absence_percentage' => round($absencePercentage, 2),
+                    'department' => $record->student->department->name ?? 'Unknown',
+                    'year' => $record->student->year ?? 'Unknown',
+                ];
+            })
+            ->filter(function ($record) {
+                return $record['absence_percentage'] > 55;
+            })
+            ->sortByDesc('absence_percentage')
+            ->values();
+
+        return response()->json([
+            'students' => $attendanceRecords,
+            'count' => $attendanceRecords->count(),
+            'subject_name' => $subject->name,
+            'threshold' => 55
+        ]);
+    }
+
+    /**
+     * Send absence alerts to students above threshold for a specific subject
+     */
+    public function sendAlertsToSubject(Request $request)
+    {
+        $subjectId = $request->subject_id;
+        
+        if (!$subjectId) {
+            return response()->json(['success' => false, 'message' => 'Subject ID is required'], 400);
+        }
+
+        $subject = Subject::find($subjectId);
+        if (!$subject) {
+            return response()->json(['success' => false, 'message' => 'Subject not found'], 404);
+        }
+
+        $totalLectures = \App\Models\Lecture::where('subject_id', $subjectId)->count();
+        
+        if ($totalLectures === 0) {
+            return response()->json(['success' => false, 'message' => 'No lectures found for this subject'], 400);
+        }
+
+        // Get students with >55% absence
+        $studentsToAlert = StudentSubjectAttendance::with(['student.user'])
+            ->where('subject_id', $subjectId)
+            ->get()
+            ->filter(function ($record) use ($totalLectures) {
+                $absencePercentage = ($record->absence_count / $totalLectures) * 100;
+                return $absencePercentage > 55;
+            });
+
+        if ($studentsToAlert->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'No students above threshold'], 400);
+        }
+
+        $sentCount = 0;
+        
+        foreach ($studentsToAlert as $attendance) {
+            $student = $attendance->student;
+            if ($student && $student->user) {
+                // Prepare subject details for the notification
+                $absencePercentage = ($attendance->absence_count / $totalLectures) * 100;
+                $subjectDetails = [
+                    [
+                        'subject_name' => $subject->name,
+                        'absence_percentage' => round($absencePercentage, 2),
+                        'absence_count' => $attendance->absence_count,
+                        'total_lectures' => $totalLectures,
+                    ]
+                ];
+                
+                $student->user->notify(new \App\Notifications\AbsenceAlert($student, $subjectDetails));
+                $sentCount++;
+            }
+        }
+
+        return response()->json([
+            'success' => true, 
+            'message' => "Alerts sent successfully to {$sentCount} students"
+        ]);
+    }
 }

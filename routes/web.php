@@ -102,6 +102,13 @@ Route::middleware([AdminOrProfessorMiddleware::class])
             Route::apiResource('users', \App\Http\Controllers\Admin\UsersController::class);
             Route::get('lectures/{id}/attendance', [LectureController::class, 'showAttendance'])->name('lectures.attendance');
             Route::get('lectures/{id}/attendance/export', [LectureController::class, 'exportAttendance'])->name('lectures.attendance.export');
+            
+            // File upload routes for lectures
+            Route::post('lectures/{lectureId}/files', [LectureController::class, 'uploadFile'])->name('lectures.files.upload');
+            Route::get('lectures/{lectureId}/files', [LectureController::class, 'getFiles'])->name('lectures.files');
+            Route::get('lecture-files/{fileId}/download', [LectureController::class, 'downloadFile'])->name('lecture-files.download');
+            Route::delete('lecture-files/{fileId}', [LectureController::class, 'deleteFile'])->name('lecture-files.delete');
+            
             Route::get('subjects', [App\Http\Controllers\Admin\SubjectController::class, 'index'])->name('api.subjects');
             Route::get('subjects-performance', [\App\Http\Controllers\Admin\PerformanceController::class, 'getSubjectsApi'])->name('api.subjects-performance');
             Route::get('stats', [\App\Http\Controllers\Admin\PerformanceController::class, 'getStatsApi'])->name('api.stats');
@@ -111,6 +118,8 @@ Route::middleware([AdminOrProfessorMiddleware::class])
         Route::get('advanced-scheduler', [LectureController::class, 'advancedScheduler'])->name('advanced-scheduler');
         Route::get('performance', [\App\Http\Controllers\Admin\PerformanceController::class, 'index'])->name('performance');
         Route::get('performance/export-csv', [\App\Http\Controllers\Admin\PerformanceController::class, 'exportCsv'])->name('performance.export-csv');
+        Route::get('performance/students-above-threshold', [\App\Http\Controllers\Admin\PerformanceController::class, 'getStudentsAboveThreshold'])->name('performance.students-above-threshold');
+        Route::post('performance/send-alerts', [\App\Http\Controllers\Admin\PerformanceController::class, 'sendAlertsToSubject'])->name('performance.send-alerts');
         Route::get('absence/alerts', [\App\Http\Controllers\Admin\AbsenceAlertController::class, 'index'])->name('absence.alerts');
         Route::post('absence/alerts/send/{studentId}', [\App\Http\Controllers\Admin\AbsenceAlertController::class, 'sendAlert'])->name('absence.alerts.send');
         Route::post('absence/alerts/send-all', [\App\Http\Controllers\Admin\AbsenceAlertController::class, 'sendAlertsToAll'])->name('absence.alerts.send-all');

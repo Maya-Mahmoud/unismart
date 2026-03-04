@@ -10,15 +10,18 @@ use App\Models\Subject;
 use App\Models\Department;
 use App\Models\StudentSubjectAttendance;
 use App\Models\User;
+use App\Models\LectureFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 
 class LectureController extends Controller
-{ public function index(Request $request)
+{ 
+    public function index(Request $request)
     {
         if ($request->expectsJson()) {
             $query = Lecture::with(['hall', 'user', 'subject']);
@@ -238,51 +241,51 @@ class LectureController extends Controller
         }
     }
 
-public function showAttendance($id)
-{
-    $lecture = Lecture::with(['hall', 'user', 'subject'])->findOrFail($id);
-    $attendances = \App\Models\LectureAttendance::with(['student.user'])
-        ->where('lecture_id', $id)
-        ->get();
+    public function showAttendance($id)
+    {
+        $lecture = Lecture::with(['hall', 'user', 'subject'])->findOrFail($id);
+        $attendances = \App\Models\LectureAttendance::with(['student.user'])
+            ->where('lecture_id', $id)
+            ->get();
 
-    // Load subject separately to ensure it works
-    $subject = null;
-    if ($lecture->subject_id) {
-        $subject = Subject::find($lecture->subject_id);
+        // Load subject separately to ensure it works
+        $subject = null;
+        if ($lecture->subject_id) {
+            $subject = Subject::find($lecture->subject_id);
+        }
+        if (!$subject && $lecture->subject) {
+            // Fallback: find subject by name if subject_id is null
+            $subject = Subject::whereRaw('LOWER(name) = LOWER(?)', [$lecture->subject])->first();
+        }
+
+        // Calculate total students based on department and year
+        $totalStudents = 0;
+        if ($subject) {
+            // Get department_id from subject (which has department_id)
+            $departmentId = $subject->department_id;
+            $year = $subject->year;
+
+            $totalStudents = Student::where('department_id', $departmentId)
+                ->where('year', $year)
+                ->count();
+        }
+
+        $presentCount = $attendances->where('status', 'present')->count(); // عدد الحاضرين
+        $absentCount = $attendances->where('status', 'absent')->count(); // عدد الغائبين (الفرق)
+
+        Log::info('Lecture Attendance Debug', [
+            'lecture_id' => $id,
+            'subject_name' => $subject ? $subject->name : null,
+            'subject_department' => $subject ? $subject->department : null,
+            'subject_year' => $subject ? $subject->year : null,
+            'department_id' => $subject ? $subject->department_id : null,
+            'totalStudents' => $totalStudents,
+            'presentCount' => $presentCount,
+            'absentCount' => $absentCount
+        ]);
+
+        return view('admin.lecture-attendance', compact('lecture', 'attendances', 'totalStudents', 'presentCount', 'absentCount'));
     }
-    if (!$subject && $lecture->subject) {
-        // Fallback: find subject by name if subject_id is null
-        $subject = Subject::whereRaw('LOWER(name) = LOWER(?)', [$lecture->subject])->first();
-    }
-
-    // Calculate total students based on department and year
-    $totalStudents = 0;
-    if ($subject) {
-        // Get department_id from subject (which has department_id)
-        $departmentId = $subject->department_id;
-        $year = $subject->year;
-
-        $totalStudents = Student::where('department_id', $departmentId)
-            ->where('year', $year)
-            ->count();
-    }
-
-    $presentCount = $attendances->where('status', 'present')->count(); // عدد الحاضرين
-    $absentCount = $attendances->where('status', 'absent')->count(); // عدد الغائبين (الفرق)
-
-    Log::info('Lecture Attendance Debug', [
-        'lecture_id' => $id,
-        'subject_name' => $subject ? $subject->name : null,
-        'subject_department' => $subject ? $subject->department : null,
-        'subject_year' => $subject ? $subject->year : null,
-        'department_id' => $subject ? $subject->department_id : null,
-        'totalStudents' => $totalStudents,
-        'presentCount' => $presentCount,
-        'absentCount' => $absentCount
-    ]);
-
-    return view('admin.lecture-attendance', compact('lecture', 'attendances', 'totalStudents', 'presentCount', 'absentCount'));
-}
     public function show(string $id)
     {
         $lecture = Lecture::with(['hall', 'user'])->findOrFail($id);
@@ -327,72 +330,72 @@ public function showAttendance($id)
     public function destroy(string $id)
     {
         $lecture = Lecture::findOrFail($id);
-    $hall = $lecture->hall;
+        $hall = $lecture->hall;
 
-    Log::info("Deleting lecture ID: {$id}");
+        Log::info("Deleting lecture ID: {$id}");
 
-    // جلب سجلات الحضور المرتبطة بهذه المحاضرة
-    $attendances = $lecture->lectureAttendances()->get();
+        // جلب سجلات الحضور المرتبطة بهذه المحاضرة
+        $attendances = $lecture->lectureAttendances()->get();
 
-    // ----------------------------------------------------
-    // الخطوة الإضافية: تحديث عدادات الغياب في الجدول التجميعي
-    // ----------------------------------------------------
-    
-    // 1. نبدأ بعملية قاعدة بيانات (Transaction) لضمان تنفيذ كل العمليات بنجاح أو فشلها كلها
-    DB::beginTransaction();
+        // ----------------------------------------------------
+        // الخطوة الإضافية: تحديث عدادات الغياب في الجدول التجميعي
+        // ----------------------------------------------------
+        
+        // 1. نبدأ بعملية قاعدة بيانات (Transaction) لضمان تنفيذ كل العمليات بنجاح أو فشلها كلها
+        DB::beginTransaction();
 
-    try {
-        $subjectId = $lecture->subject_id;
+        try {
+            $subjectId = $lecture->subject_id;
 
-        // 2. نمر على كل سجل حضور
-        foreach ($attendances as $attendance) {
-            // 3. إذا كان الطالب مسجلًا كـ 'غياب'
-            if ($attendance->status === 'absent') {
-                // 4. نجد سجل العداد التجميعي للطالب في هذه المادة
-                $summaryRecord = StudentSubjectAttendance::where('student_id', $attendance->student_id)
-                    ->where('subject_id', $subjectId)
-                    ->first();
-                
-                // 5. نتحقق ونخفض العداد
-                if ($summaryRecord) {
-                    // نستخدم decrement لضمان تخفيض القيمة بأمان
-                    $summaryRecord->decrement('absence_count'); 
-                    Log::info("Decremented absence_count for student {$attendance->student_id} in subject {$subjectId}");
+            // 2. نمر على كل سجل حضور
+            foreach ($attendances as $attendance) {
+                // 3. إذا كان الطالب مسجلًا كـ 'غياب'
+                if ($attendance->status === 'absent') {
+                    // 4. نجد سجل العداد التجميعي للطالب في هذه المادة
+                    $summaryRecord = StudentSubjectAttendance::where('student_id', $attendance->student_id)
+                        ->where('subject_id', $subjectId)
+                        ->first();
+                    
+                    // 5. نتحقق ونخفض العداد
+                    if ($summaryRecord) {
+                        // نستخدم decrement لضمان تخفيض القيمة بأمان
+                        $summaryRecord->decrement('absence_count'); 
+                        Log::info("Decremented absence_count for student {$attendance->student_id} in subject {$subjectId}");
+                    }
                 }
             }
+            
+            // 6. حذف سجلات الحضور الفردية للمحاضرة (كما كان لديك)
+            $lectureAttendancesCount = $lecture->lectureAttendances()->count();
+            $lecture->lectureAttendances()->delete(); 
+            Log::info("Deleted {$lectureAttendancesCount} lecture attendance records for lecture ID: {$id}");
+
+            // 7. ثم حذف المحاضرة نفسها
+            $lecture->delete();
+            Log::info("Lecture ID: {$id} deleted successfully");
+
+            // 8. تحديث حالة القاعة
+            if ($hall) {
+                $hall->updateStatusBasedOnLectures();
+            }
+
+            DB::commit(); // تأكيد كل العمليات
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lecture and its attendance records deleted successfully and counters updated!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack(); // التراجع عن كل العمليات في حال حدوث خطأ
+            Log::error("Error during lecture deletion and counter update for ID: {$id}. Error: " . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete lecture due to a server error.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        // 6. حذف سجلات الحضور الفردية للمحاضرة (كما كان لديك)
-        $lectureAttendancesCount = $lecture->lectureAttendances()->count();
-        $lecture->lectureAttendances()->delete(); 
-        Log::info("Deleted {$lectureAttendancesCount} lecture attendance records for lecture ID: {$id}");
-
-        // 7. ثم حذف المحاضرة نفسها
-        $lecture->delete();
-        Log::info("Lecture ID: {$id} deleted successfully");
-
-        // 8. تحديث حالة القاعة
-        if ($hall) {
-            $hall->updateStatusBasedOnLectures();
-        }
-
-        DB::commit(); // تأكيد كل العمليات
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Lecture and its attendance records deleted successfully and counters updated!'
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack(); // التراجع عن كل العمليات في حال حدوث خطأ
-        Log::error("Error during lecture deletion and counter update for ID: {$id}. Error: " . $e->getMessage());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to delete lecture due to a server error.',
-            'error' => $e->getMessage()
-        ], 500);
-    }
     }
 
 
@@ -472,5 +475,99 @@ public function showAttendance($id)
         if ($startTime->isFuture()) {
             \App\Jobs\SendLectureStartedNotifications::dispatch($lecture)->delay($startTime);
         }
+    }
+
+    /**
+     * Upload a file for a lecture
+     */
+    public function uploadFile(Request $request, string $lectureId)
+    {
+        $request->validate([
+            'file' => 'required|file|max:51200', // Max 50MB
+        ]);
+
+        $lecture = Lecture::findOrFail($lectureId);
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = $file->getClientOriginalName();
+            $fileType = $file->getMimeType();
+            $fileSize = $file->getSize();
+
+            // Store file in private storage
+            $path = $file->store('lecture-files/' . $lectureId, 'local');
+
+            $lectureFile = LectureFile::create([
+                'lecture_id' => $lectureId,
+                'file_name' => $fileName,
+                'file_path' => $path,
+                'file_type' => $fileType,
+                'file_size' => $fileSize,
+                'uploaded_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'File uploaded successfully!',
+                'data' => $lectureFile
+            ], 201);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No file uploaded.'
+        ], 400);
+    }
+
+    /**
+     * Get files for a lecture
+     */
+    public function getFiles(string $lectureId)
+    {
+        $lecture = Lecture::findOrFail($lectureId);
+        $files = $lecture->lectureFiles()->with('uploadedBy')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $files
+        ]);
+    }
+
+    /**
+     * Download a lecture file
+     */
+    public function downloadFile(string $fileId)
+    {
+        $file = LectureFile::findOrFail($fileId);
+
+        if (!Storage::exists($file->file_path)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File not found.'
+            ], 404);
+        }
+
+        return Storage::download($file->file_path, $file->file_name);
+    }
+
+    /**
+     * Delete a lecture file
+     */
+    public function deleteFile(string $fileId)
+    {
+        $file = LectureFile::findOrFail($fileId);
+
+        // Delete the file from storage
+        if (Storage::exists($file->file_path)) {
+            Storage::delete($file->file_path);
+        }
+
+        // Delete the database record
+        $file->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'File deleted successfully!'
+        ]);
     }
 }

@@ -269,6 +269,48 @@
         </div>
     </div>
 
+    <!-- Upload File Modal -->
+    <div id="uploadFileModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Upload Lecture Files</h3>
+                    <button id="closeUploadModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div id="filesList" class="mb-4 max-h-40 overflow-y-auto">
+                    <p class="text-sm text-gray-500">No files uploaded yet.</p>
+                </div>
+
+                <form id="uploadFileForm" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" id="uploadLectureId" name="lecture_id">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select File</label>
+                        <input type="file" id="lectureFile" name="file" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancelUploadBtn"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                            Close
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                            Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript -->
     <script>
         let apiBaseUrl;
@@ -282,6 +324,8 @@
         } else {
             apiBaseUrl = '';
         }
+
+        let currentLectureId = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             const addLectureBtn = document.getElementById('addLectureBtn');
@@ -430,7 +474,11 @@
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="text-lg font-semibold text-gray-900">${subjectName} / ${lecture.title}</h3>
                                 <div class="flex items-center space-x-2">
-                                  
+                                    <button onclick="uploadFiles(${lecture.id})" class="text-green-600 hover:text-green-900 transition-colors duration-200 transform hover:scale-110" title="Upload Files">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                    </button>
                                     <button onclick="deleteLecture(${lecture.id})" class="text-red-600 hover:text-red-900 transition-colors duration-200 transform hover:scale-110">
                                         <svg class="w-5 h-5 !stroke-red-600" fill="none" viewBox="0 0 24 24" style="stroke: #ef4444 !important;">
                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -549,6 +597,141 @@
                     alert('Failed to load lecture data: ' + error.message);
                 }
             };
+
+            // File upload functions
+            window.uploadFiles = async function(lectureId) {
+                currentLectureId = lectureId;
+                document.getElementById('uploadLectureId').value = lectureId;
+                document.getElementById('uploadFileModal').classList.remove('hidden');
+                await loadFiles(lectureId);
+            };
+
+            async function loadFiles(lectureId) {
+                try {
+                    const response = await fetch(`${apiBaseUrl}/lectures/${lectureId}/files`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    });
+                    const result = await response.json();
+                    
+                    const filesList = document.getElementById('filesList');
+                    
+                    if (result.success && result.data.length > 0) {
+                        filesList.innerHTML = result.data.map(file => `
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-700">${file.file_name}</p>
+                                    <p class="text-xs text-gray-500">${formatFileSize(file.file_size)}</p>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <a href="/admin/api/lecture-files/${file.id}/download" class="text-blue-600 hover:text-blue-800 text-sm">Download</a>
+                                    <button onclick="deleteFile(${file.id})" class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        filesList.innerHTML = '<p class="text-sm text-gray-500">No files uploaded yet.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error loading files:', error);
+                }
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            window.deleteFile = async function(fileId) {
+                if (!confirm('Are you sure you want to delete this file?')) return;
+                
+                try {
+                    const response = await fetch(`/admin/api/lecture-files/${fileId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('File deleted successfully!');
+                        await loadFiles(currentLectureId);
+                    } else {
+                        alert(result.message || 'Error deleting file');
+                    }
+                } catch (error) {
+                    console.error('Error deleting file:', error);
+                    alert('Error deleting file');
+                }
+            };
+
+            // Upload file form handler
+            const uploadFileForm = document.getElementById('uploadFileForm');
+            uploadFileForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                if (!currentLectureId) {
+                    alert('No lecture selected');
+                    return;
+                }
+
+                const fileInput = document.getElementById('lectureFile');
+                if (!fileInput.files.length) {
+                    alert('Please select a file');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const response = await fetch(`${apiBaseUrl}/lectures/${currentLectureId}/files`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('File uploaded successfully!');
+                        fileInput.value = ''; // Reset file input
+                        await loadFiles(currentLectureId);
+                    } else {
+                        alert(result.message || 'Error uploading file');
+                    }
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                    alert('Error uploading file');
+                }
+            });
+
+            // Upload modal handlers
+            const uploadFileModal = document.getElementById('uploadFileModal');
+            const closeUploadModal = document.getElementById('closeUploadModal');
+            const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+
+            function hideUploadModal() {
+                uploadFileModal.classList.add('hidden');
+                currentLectureId = null;
+            }
+
+            closeUploadModal.addEventListener('click', hideUploadModal);
+            cancelUploadBtn.addEventListener('click', hideUploadModal);
+
+            uploadFileModal.addEventListener('click', function(e) {
+                if (e.target === uploadFileModal) {
+                    hideUploadModal();
+                }
+            });
 
             // معالجة النافذة الخاصة بالتعديل
             const editLectureModal = document.getElementById('editLectureModal');
