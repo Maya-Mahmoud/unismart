@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use App\Services\GeminiService;
 
 class LectureController extends Controller
 { 
@@ -482,41 +483,84 @@ class LectureController extends Controller
      */
     public function uploadFile(Request $request, string $lectureId)
     {
-        $request->validate([
-            'file' => 'required|file|max:51200', // Max 50MB
-        ]);
-
-        $lecture = Lecture::findOrFail($lectureId);
-
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $fileName = $file->getClientOriginalName();
-            $fileType = $file->getMimeType();
-            $fileSize = $file->getSize();
-
-            // Store file in private storage
-            $path = $file->store('lecture-files/' . $lectureId, 'local');
-
-            $lectureFile = LectureFile::create([
-                'lecture_id' => $lectureId,
-                'file_name' => $fileName,
-                'file_path' => $path,
-                'file_type' => $fileType,
-                'file_size' => $fileSize,
-                'uploaded_by' => Auth::id(),
+        try {
+            Log::info('Upload file request started', [
+                'lectureId' => $lectureId,
+                'hasFile' => $request->hasFile('file'),
+                'allFiles' => $request->files->all(),
+                'userId' => Auth::id(),
+                'userRole' => Auth::user()->role ?? 'guest'
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'File uploaded successfully!',
-                'data' => $lectureFile
-            ], 201);
-        }
+            // Validate the request
+            $validated = $request->validate([
+                'file' => 'required|file|max:51200', // Max 50MB
+            ]);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'No file uploaded.'
-        ], 400);
+            // Find the lecture
+            $lecture = Lecture::find($lectureId);
+            
+            if (!$lecture) {
+                Log::error('Lecture not found', ['lectureId' => $lectureId]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lecture not found.'
+                ], 404);
+            }
+
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $fileName = $file->getClientOriginalName();
+                $fileType = $file->getMimeType();
+                $fileSize = $file->getSize();
+
+                Log::info('File details', [
+                    'fileName' => $fileName,
+                    'fileType' => $fileType,
+                    'fileSize' => $fileSize
+                ]);
+
+                // Store file in private storage
+                $path = $file->store('lecture-files/' . $lectureId, 'local');
+
+                Log::info('File stored at path: ' . $path);
+
+                $lectureFile = LectureFile::create([
+                    'lecture_id' => $lectureId,
+                    'file_name' => $fileName,
+                    'file_path' => $path,
+                    'file_type' => $fileType,
+                    'file_size' => $fileSize,
+                    'uploaded_by' => Auth::id(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'File uploaded successfully!',
+                    'data' => $lectureFile
+                ], 201);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No file uploaded.'
+            ], 400);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error during file upload', ['errors' => $e->errors()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', array_flatten($e->errors()))
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error uploading file: ' . $e->getMessage(), [
+                'exception' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload file: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -548,6 +592,50 @@ class LectureController extends Controller
         }
 
         return Storage::download($file->file_path, $file->file_name);
+    }
+
+    /**
+     * View a lecture file inline (for embedding in iframe)
+     */
+    public function viewFile(string $fileId)
+    {
+        try {
+            $file = LectureFile::findOrFail($fileId);
+            
+            Log::info('View file request', [
+                'file_id' => $fileId,
+                'file_name' => $file->file_name,
+                'file_path' => $file->file_path,
+                'user_id' => Auth::id() ?? 'guest'
+            ]);
+
+            if (!Storage::exists($file->file_path)) {
+                Log::error('File not found in storage', ['path' => $file->file_path]);
+                abort(404, 'File not found in storage.');
+            }
+
+            // Get the file content and determine mime type
+            $fileContent = Storage::get($file->file_path);
+            $mimeType = $file->file_type ?: 'application/octet-stream';
+            
+            Log::info('Serving file', ['mimeType' => $mimeType, 'size' => strlen($fileContent)]);
+            
+            // For PDFs and images, serve inline
+            if (strpos($mimeType, 'pdf') !== false || strpos($mimeType, 'image/') !== false) {
+                return response($fileContent, 200, [
+                    'Content-Type' => $mimeType,
+                    'Content-Disposition' => 'inline; filename="' . $file->file_name . '"',
+                ]);
+            }
+            
+            // For other files, download instead
+            return Storage::download($file->file_path, $file->file_name);
+        } catch (\Exception $e) {
+            Log::error('Error viewing file: ' . $e->getMessage(), [
+                'exception' => $e->getTraceAsString()
+            ]);
+            abort(500, 'Error viewing file: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -689,14 +689,15 @@
 
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
+                // Add CSRF token to FormData for Laravel
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
 
                 try {
                     const response = await fetch(`${apiBaseUrl}/lectures/${currentLectureId}/files`, {
                         method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
                         body: formData
+                        // Note: Don't set Content-Type header when using FormData
+                        // The browser will set it with the correct multipart boundary
                     });
 
                     const result = await response.json();
@@ -710,7 +711,7 @@
                     }
                 } catch (error) {
                     console.error('Error uploading file:', error);
-                    alert('Error uploading file');
+                    alert('Error uploading file: ' + error.message);
                 }
             });
 

@@ -40,11 +40,22 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
+                                        @php
+                                            // حساب المجموع الكلي للمحاضرات لهذه المادة
+                                            $totalLectures = $counts['present'] + $counts['absent'];
+                                        @endphp
+                                        
                                         <div class="text-sm text-gray-500">
-                                            Total: {{ $counts['present'] + $counts['absent'] }} lectures
+                                            Total: {{ $totalLectures }} lectures
                                         </div>
+                                        
                                         <div class="text-sm font-medium text-gray-900">
-                                            {{ number_format(($counts['present'] / ($counts['present'] + $counts['absent']) * 100), 1) }}% attendance
+                                            {{-- التأكد من أن المجموع أكبر من صفر قبل إجراء القسمة --}}
+                                            @if($totalLectures > 0)
+                                                {{ number_format(($counts['present'] / $totalLectures * 100), 1) }}% attendance
+                                            @else
+                                                0.0% attendance
+                                            @endif
                                         </div>
                                     </div>
                                 </div>

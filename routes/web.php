@@ -88,17 +88,16 @@ Route::middleware([AdminOrProfessorMiddleware::class])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('lectures', [LectureController::class, 'index'])->name('lectures'); // تم نقل هذا من AdminMiddleware
+        Route::get('lectures', [LectureController::class, 'index'])->name('lectures');
         Route::get('generate-qr', [\App\Http\Controllers\Admin\QrCodeController::class, 'index'])->name('generate-qr');
         Route::post('api/generate-qr', [\App\Http\Controllers\Admin\QrCodeController::class, 'generateQrCode']);
 
-        // 🚨 التعديل الرئيسي: API لـ halls وlectures تم وضعه هنا ليكون متاحاً للمدير والبروفيسور
         Route::prefix('api')->name('api.')->group(function () {
             Route::get('lectures', [LectureController::class, 'index'])->name('api.lectures');
             Route::get('available-halls', [LectureController::class, 'getAvailableHalls'])->name('available-halls');
             Route::withoutMiddleware([AdminOrProfessorMiddleware::class])->middleware(['auth'])->get('halls/{hallId}/lectures', [LectureController::class, 'getLecturesByHall'])->name('halls.lectures');
             Route::apiResource('halls', \App\Http\Controllers\Admin\HallController::class);
-            Route::apiResource('lectures', LectureController::class); // إضافة هذا لدعم POST وCRUD الكامل
+            Route::apiResource('lectures', LectureController::class);
             Route::apiResource('users', \App\Http\Controllers\Admin\UsersController::class);
             Route::get('lectures/{id}/attendance', [LectureController::class, 'showAttendance'])->name('lectures.attendance');
             Route::get('lectures/{id}/attendance/export', [LectureController::class, 'exportAttendance'])->name('lectures.attendance.export');
@@ -107,6 +106,7 @@ Route::middleware([AdminOrProfessorMiddleware::class])
             Route::post('lectures/{lectureId}/files', [LectureController::class, 'uploadFile'])->name('lectures.files.upload');
             Route::get('lectures/{lectureId}/files', [LectureController::class, 'getFiles'])->name('lectures.files');
             Route::get('lecture-files/{fileId}/download', [LectureController::class, 'downloadFile'])->name('lecture-files.download');
+            Route::get('lecture-files/{fileId}/view', [LectureController::class, 'viewFile'])->name('lecture-files.view');
             Route::delete('lecture-files/{fileId}', [LectureController::class, 'deleteFile'])->name('lecture-files.delete');
             
             Route::get('subjects', [App\Http\Controllers\Admin\SubjectController::class, 'index'])->name('api.subjects');
@@ -123,16 +123,15 @@ Route::middleware([AdminOrProfessorMiddleware::class])
         Route::get('absence/alerts', [\App\Http\Controllers\Admin\AbsenceAlertController::class, 'index'])->name('absence.alerts');
         Route::post('absence/alerts/send/{studentId}', [\App\Http\Controllers\Admin\AbsenceAlertController::class, 'sendAlert'])->name('absence.alerts.send');
         Route::post('absence/alerts/send-all', [\App\Http\Controllers\Admin\AbsenceAlertController::class, 'sendAlertsToAll'])->name('absence.alerts.send-all');
-         // Profile routes
-    Route::get('profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'show'])->name('profile');
-    Route::put('profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'update'])->name('profile.update');
+        Route::get('profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'show'])->name('profile');
+        Route::put('profile', [App\Http\Controllers\Admin\AdminProfileController::class, 'update'])->name('profile.update');
 
     });
 
 // مسارات البروفيسور (Professor Routes) - محمية بـ AdminOrProfessorMiddleware
 Route::middleware([AdminOrProfessorMiddleware::class])->prefix('professor')->name('professor.')->group(function () {
     Route::get('dashboard', function () {
-        return redirect()->route('halls.index'); // Redirect professor dashboard to halls page
+        return redirect()->route('halls.index');
     })->name('dashboard');
 
     Route::get('lectures', [LectureController::class, 'index'])->name('lectures');
@@ -144,10 +143,10 @@ Route::middleware([AdminOrProfessorMiddleware::class])->prefix('professor')->nam
     });
 });
 
-// مسارات البروفيسور (Professor Routes) - محمية بـ ProfessorMiddleware فقط (قد تحتاج إلى مراجعة استخدام هذا الـ Middleware)
+// مسارات البروفيسور (Professor Routes) - محمية بـ ProfessorMiddleware فقط
 Route::middleware([ProfessorMiddleware::class])->prefix('professor')->name('professor.')->group(function () {
     Route::get('dashboard', function () {
-        return redirect()->route('halls.index'); // Redirect professor dashboard to halls page
+        return redirect()->route('halls.index');
     })->name('dashboard');
 });
 
@@ -176,6 +175,10 @@ Route::middleware([StudentMiddleware::class])->prefix('student')->name('student.
     Route::get('profile', [StudentProfileController::class, 'show'])->name('profile');
     Route::get('profile/edit', [StudentProfileController::class, 'edit'])->name('edit-profile');
     Route::put('profile', [StudentProfileController::class, 'update'])->name('update-profile');
+    
+    // Student can download lecture files (after marking attendance)
+    Route::get('lecture-files/{fileId}/download', [LectureController::class, 'downloadFile'])->name('student.lecture-files.download');
+    Route::get('lecture-files/{fileId}/view', [LectureController::class, 'viewFile'])->name('student.lecture-files.view');
 });
 
 // Notification routes
