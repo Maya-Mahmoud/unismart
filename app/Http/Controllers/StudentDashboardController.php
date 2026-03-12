@@ -8,6 +8,7 @@ use App\Models\Lecture;
 use App\Models\Subject;
 use App\Models\LectureAttendance;
 use App\Models\StudentSubjectAttendance;
+use App\Models\LectureFile;
 
 class StudentDashboardController extends Controller
 {
@@ -108,4 +109,33 @@ class StudentDashboardController extends Controller
 
         return view('student.attendance', compact('attendanceData', 'displayYear', 'displaySemester'));
     }
+
+    public function showSubjectFiles($subject)
+    {
+        $user = Auth::user();
+        $student = $user->student;
+        $department = strtolower($student->department->name ?? '');
+
+        $subjectModel = Subject::where('id', $subject)
+            ->where('department', $department)
+            ->firstOrFail();
+
+        // Get all unique files from lectures of this subject
+        $files = LectureFile::whereHas('lecture.subject', function($q) use ($subject) {
+            $q->where('id', $subject);
+        })
+        ->whereHas('lecture', function($q) use ($department, $subjectModel) {
+            // Optional: filter by dept/year/semester
+            $q->where('department_id', $subjectModel->department_id);
+        })
+        ->with(['lecture', 'uploadedBy'])
+        ->orderByDesc('created_at')
+        ->get();
+
+        $displayYear = ucfirst($subjectModel->year);
+        $displaySemester = ucfirst($subjectModel->semester);
+
+        return view('student.subjects', compact('subjectModel', 'files', 'displayYear', 'displaySemester'));
+    }
 }
+

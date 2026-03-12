@@ -163,7 +163,8 @@ Route::middleware([StudentMiddleware::class])->prefix('student')->name('student.
     Route::get('subjects', [StudentDashboardController::class, 'subjects'])->name('subjects');
     Route::get('scan-qr', [StudentDashboardController::class, 'scanQr'])->name('scan-qr');
     Route::post('scan-qr', [AttendanceController::class, 'scanQr'])->name('scan-qr.scan');
-    Route::get('attendance', [StudentDashboardController::class, 'attendance'])->name('attendance');
+Route::get('attendance', [StudentDashboardController::class, 'attendance'])->name('attendance');
+    Route::get('subjects/{subject}', [StudentDashboardController::class, 'showSubjectFiles'])->name('subjects.files');
 
     // Chat routes
     Route::get('chat', function() {
