@@ -515,8 +515,8 @@
                             </div>
 
                             <div class="flex space-x-2">
-                                <a href="/admin/api/lectures/${lecture.id}/attendance" class="flex-1 text-white bg-gradient-to-r from-purple-700 to-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center" style="background: linear-gradient(90deg, #7C3AED, #2563EB);">
-                                    View Attendance</a>
+                                <a href="/admin/api/lectures/${lecture.id}/attendance" class="flex-1 text-white bg-gradient-to-r from-purple-700 to-blue-600 text-white px-4 py-2 rounded-md text-l font-medium hover:opacity-90 transition-opacity flex items-center" style="background: linear-gradient(90deg, #7C3AED, #2563EB);">
+                                    Analytics  &  AI</a>
                                 <button onclick="editLecture(${lecture.id})" class=" flex-1 bg-gray-200  px-3 py-1 rounded-md bg-purple-100 text-purple-900 hover:bg-purple-200">
                                     Edit
                                 </button>

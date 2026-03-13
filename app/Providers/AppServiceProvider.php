@@ -3,13 +3,16 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\GeminiService;
 use Carbon\Carbon;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(GeminiService::class, function ($app) {
+        return new GeminiService();
+    });
     }
 
     public function boot(): void

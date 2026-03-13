@@ -13,6 +13,7 @@ use App\Http\Controllers\Professor\HallController;
 use App\Http\Controllers\StudentChatController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\Admin\SubjectController;
+use App\Http\Controllers\Admin\ChatController;
 use Illuminate\Support\Facades\Auth;
 
 Route::middleware([AdminOrProfessorMiddleware::class])->prefix('admin/api')->group(function () {
@@ -181,7 +182,7 @@ Route::get('attendance', [StudentDashboardController::class, 'attendance'])->nam
     Route::get('lecture-files/{fileId}/download', [LectureController::class, 'downloadFile'])->name('student.lecture-files.download');
     Route::get('lecture-files/{fileId}/view', [LectureController::class, 'viewFile'])->name('student.lecture-files.view');
 });
-
+Route::post('/admin/chat-with-ai', [ChatController::class, 'handleChat'])->name('admin.ai.chat');
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');

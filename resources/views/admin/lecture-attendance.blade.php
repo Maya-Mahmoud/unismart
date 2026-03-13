@@ -1,7 +1,7 @@
 <x-admin-layout>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 pb-12">
         <div class="flex flex-col">
             <a href="{{ route('admin.lectures') }}" class="text-base text-purple-600 text-lg hover:text-purple-700 mb-2">
                 ← Back to Lectures
@@ -13,9 +13,9 @@
                     <h1 class="text-4xl font-bold text-gray-900"> {{ $lecture->title }}</h1>
                 </div>
 
-                <button id="exportCsvBtn" class="flex items-center bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium hover:bg-green-700">
+                <button id="exportCsvBtn" class="flex items-center bg-green-600 text-white px-5 py-3 rounded-lg text-sm font-medium hover:bg-green-700 transition">
                     <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export CSV
                 </button>
@@ -23,6 +23,7 @@
         </div>
         <br>
 
+        {{-- Lecture Info Card --}}
         <div class="bg-white p-8 border border-green-100 rounded-xl shadow-md hall-card">
             <div class="flex flex-wrap justify-between items-start gap-y-4">
                 <div class="flex items-start min-w-1/4">
@@ -111,6 +112,7 @@
             </div>
         </div>
 
+        {{-- Attendance Statistics Card --}}
         <div class="bg-white p-6 border border-gray-100 rounded-xl shadow-md mt-6 hall-card">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Attendance Statistics</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -157,8 +159,87 @@
                 </div>
             </div>
         </div>
+
+        {{-- Gemini Assistant Chat Card --}}
+        <div class="mt-8 bg-white rounded-3xl shadow-xl overflow-hidden border border-purple-100 flex flex-col md:flex-row h-[550px]">
+            <div class="w-full md:w-80 bg-gradient-to-br from-purple-700 via-indigo-800 to-indigo-950 p-8 text-white flex flex-col justify-between relative">
+                <div class="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="inline-flex p-3 bg-white/10 rounded-2xl backdrop-blur-md mb-6 border border-white/20">
+                        <svg class="w-8 h-8 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-2">VELORIA AI</h3>
+                    <p class="text-purple-200/80 text-sm leading-relaxed mb-8">
+                        Intelligent Academic Assistant
+                    </p>
+                    
+                    <div class="space-y-3">
+                        <p class="text-[10px] uppercase tracking-widest font-bold text-purple-300/60">Quick Actions</p>
+                        <button onclick="quickAction('Summarize Attendance')" class="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all group text-sm border border-white/5">
+                            <span>📝 Summarize Attendance</span>
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                        <button onclick="quickAction('Generate Questions')" class="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all group text-sm border border-white/5">
+                            <span>💡 Generate Questions</span>
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="relative z-10 text-[10px] text-purple-400/50 mt-4 italic">Powered by Google Gemini</p>
+            </div>
+
+            <div class="flex-1 flex flex-col bg-gray-50/50">
+                <div class="px-6 py-3 bg-white/80 backdrop-blur-sm border-b border-gray-100 flex items-center justify-between">
+                    <span class="flex items-center text-xs font-semibold text-green-500 uppercase tracking-tighter">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span> System Online
+                    </span>
+                </div>
+
+                <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <div class="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-none shadow-sm text-m text-black-700 max-w-[85%] leading-relaxed">
+                            Hello Professor! 👋 I've analyzed the data for <b>{{ $lecture->title }}</b>. How can I assist you today?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 bg-white border-t border-gray-100">
+                    {{-- شريط معاينة الملف --}}
+                    <div id="filePreview" class="mb-2 px-3 py-2 bg-purple-50 text-purple-700 text-xs rounded-xl hidden flex items-center justify-between border border-purple-100 shadow-sm">
+                        <span id="fileNameDisplay" class="truncate max-w-[250px] font-medium"></span>
+                        <button onclick="clearFile()" class="ml-2 text-rose-500 hover:text-rose-700 font-bold bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">×</button>
+                    </div>
+
+                    <div class="relative flex items-center gap-3">
+                        {{-- مدخل الملف المخفي --}}
+                        <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf,.doc,.docx" onchange="handleFileSelect(this)">
+                        
+                        {{-- زر إضافة الملف (الزائد) --}}
+                        <button type="button" onclick="document.getElementById('fileInput').click()" class="h-12 w-12 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200 transition flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </button>
+
+                        <input type="text" id="userInput" placeholder="Type your request or ask about a file..." 
+                               class="flex-1 bg-gray-100 border-none rounded-2xl py-3.5 px-6 focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all text-sm shadow-inner">
+                        
+                        <button id="sendMessageBtn" class="h-12 w-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 hover:scale-105 transition shadow-lg flex items-center justify-center flex-shrink-0 active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        <div class="bg-white shadow-sm rounded-lg mt-6">
+        {{-- Student Attendance List --}}
+        <div class="bg-white shadow-sm rounded-lg mt-8">
             <div class="p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Student Attendance</h3>
                 @if($attendances->isEmpty())
@@ -182,99 +263,127 @@
         </div>
     </div>
 
-    <div id="chatOverlay" class="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0"></div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-    <button id="openChatBtn" class="fixed bottom-8 right-8 w-16 h-16 bg-purple-600 text-white rounded-full shadow-2xl hover:bg-purple-700 hover:scale-110 transition-all duration-300 z-30 flex items-center justify-center border-4 border-white">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-    </button>
+  <script>
+    function formatMessage(text) {
+        return marked.parse(text);
+    }
 
-    <div id="chatSidebar" class="fixed top-4 bottom-4 -right-[600px] w-[500px] bg-white rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] z-50 transition-all duration-500 ease-[cubic-bezier(0.18,0.89,0.32,1.28)] flex flex-col overflow-hidden border border-gray-100">
-        <div class="p-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex justify-between items-center shadow-md">
-            <div class="flex items-center space-x-4">
-                <div class="p-2 bg-white/20 rounded-xl backdrop-blur-md">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+    function appendMessage(msg, isUser = false) {
+        const chatMessages = document.getElementById('chatMessages');
+        const alignment = isUser ? 'justify-end' : 'justify-start';
+        const bgColor = isUser ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200 text-gray-900 shadow-sm';
+        const rounded = isUser ? 'rounded-tr-none' : 'rounded-tl-none';
+        
+        const finalContent = isUser ? msg : formatMessage(msg);
+
+        const icon = isUser ? '' : `
+            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>`;
+        
+        const msgHtml = `
+            <div class="flex ${alignment} items-start transition-all duration-300">
+                ${icon}
+                <div dir="auto" class="${bgColor} p-4 rounded-2xl ${rounded} text-base max-w-[85%] leading-relaxed font-medium ${!isUser ? 'prose prose-base prose-purple' : ''}">
+                    ${finalContent}
                 </div>
-                <div>
-                    <h3 class="font-bold text-lg leading-tight">Gemini Assistant</h3>
-                    <p class="text-xs text-purple-200 uppercase font-black tracking-widest">Lecture Analysis</p>
-                </div>
-            </div>
-            <button id="closeChatBtn" class="p-2 hover:bg-white/20 rounded-full transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-        </div>
+            </div>`;
+        
+        chatMessages.insertAdjacentHTML('beforeend', msgHtml);
+        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+    }
 
-        <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50">
-            <div class="flex items-start">
-                <div class="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm text-gray-700 max-w-[85%] leading-relaxed">
-                    مرحباً دكتور! 👋 أنا جاهز لمساعدتك في تحليل بيانات محاضرة <b>{{ $lecture->title }}</b>. هل تريد تلخيصاً للحضور أم إنشاء اختبار؟
-                </div>
-            </div>
-        </div>
+    // دوال إدارة الملفات الجديدة
+    function handleFileSelect(input) {
+        const preview = document.getElementById('filePreview');
+        const nameDisplay = document.getElementById('fileNameDisplay');
+        if (input.files && input.files[0]) {
+            nameDisplay.innerText = "📎 Selected: " + input.files[0].name;
+            preview.classList.remove('hidden');
+        }
+    }
 
-        <div class="p-6 bg-white border-t border-gray-100">
-            <div class="flex gap-2 mb-4 overflow-x-auto no-scrollbar py-1">
-                <button class="whitespace-nowrap px-4 py-2 bg-purple-50 text-purple-700 text-[11px] font-bold rounded-xl border border-purple-100 hover:bg-purple-100 transition">📝 تلخيص الحضور</button>
-                <button class="whitespace-nowrap px-4 py-2 bg-green-50 text-green-700 text-[11px] font-bold rounded-xl border border-green-100 hover:bg-green-100 transition">💡 توليد أسئلة</button>
-            </div>
-            <div class="relative group">
-                <input type="text" id="userInput" placeholder="Ask Gemini something..." class="w-full bg-gray-100 border-none rounded-2xl py-4 pl-5 pr-14 focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all text-sm shadow-inner">
-                <button id="sendMessageBtn" class="absolute right-2 top-2 bottom-2 px-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition shadow-lg flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                </button>
-            </div>
-        </div>
-    </div>
+    function clearFile() {
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('filePreview');
+        fileInput.value = '';
+        preview.classList.add('hidden');
+    }
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 1. Original CSV Export Logic
-            const exportCsvBtn = document.getElementById('exportCsvBtn');
-            exportCsvBtn.addEventListener('click', function() {
-                const link = document.createElement('a');
-                link.href = '{{ route("admin.api.lectures.attendance.export", $lecture->id) }}';
-                link.download = 'lecture_attendance_{{ $lecture->id }}.csv';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
+    function quickAction(command) {
+        const input = document.getElementById('userInput');
+        input.value = command;
+        document.getElementById('sendMessageBtn').click();
+    }
 
-            // 2. Modified Chat Logic
-            const openChatBtn = document.getElementById('openChatBtn');
-            const closeChatBtn = document.getElementById('closeChatBtn');
-            const chatSidebar = document.getElementById('chatSidebar');
-            const chatOverlay = document.getElementById('chatOverlay');
-            const sendMessageBtn = document.getElementById('sendMessageBtn');
-            const userInput = document.getElementById('userInput');
-            const chatMessages = document.getElementById('chatMessages');
+    document.addEventListener('DOMContentLoaded', function() {
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const userInput = document.getElementById('userInput');
 
-            function toggleChat(isOpen) {
-                if (isOpen) {
-                    chatSidebar.classList.remove('-right-[600px]');
-                    chatSidebar.classList.add('right-4');
-                    chatOverlay.classList.remove('hidden');
-                    setTimeout(() => chatOverlay.classList.add('opacity-100'), 10);
-                    openChatBtn.classList.add('scale-0', 'opacity-0');
-                } else {
-                    chatSidebar.classList.add('-right-[600px]');
-                    chatSidebar.classList.remove('right-4');
-                    chatOverlay.classList.remove('opacity-100');
-                    setTimeout(() => chatOverlay.classList.add('hidden'), 300);
-                    openChatBtn.classList.remove('scale-0', 'opacity-0');
-                }
+        async function handleSend() {
+            const msg = userInput.value.trim();
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!msg && !file) return;
+
+            // عرض الرسالة في الواجهة
+            let displayMsg = msg;
+            if (file) displayMsg += `<br><span class="text-xs opacity-70 italic font-normal">[Attached: ${file.name}]</span>`;
+            appendMessage(displayMsg, true);
+
+            // تصفير المدخلات
+            userInput.value = '';
+            clearFile();
+
+            const loadingId = 'loading-' + Date.now();
+            const loadingHtml = `<div id="${loadingId}" class="text-xs text-black-400 italic ml-10 animate-pulse">Veloria AI is analyzing...</div>`;
+            document.getElementById('chatMessages').insertAdjacentHTML('beforeend', loadingHtml);
+
+            // استخدام FormData لإرسال الرسالة والملف معاً
+            const formData = new FormData();
+            formData.append('message', msg);
+            formData.append('lecture_id', "{{ $lecture->id }}");
+            if (file) {
+                formData.append('attachment', file);
             }
 
-            openChatBtn.addEventListener('click', () => toggleChat(true));
-            closeChatBtn.addEventListener('click', () => toggleChat(false));
-            chatOverlay.addEventListener('click', () => toggleChat(false));
+            try {
+                const response = await fetch("{{ route('admin.ai.chat') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        // لا نضع Content-Type مع FormData
+                    },
+                    body: formData
+                });
 
-            sendMessageBtn.addEventListener('click', function() {
-                const msg = userInput.value.trim();
-                if (msg) {
-                    const userMsg = `<div class="flex justify-end"><div class="bg-purple-600 text-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm max-w-[85%]">${msg}</div></div>`;
-                    chatMessages.insertAdjacentHTML('beforeend', userMsg);
-                    userInput.value = '';
-                    chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
-                }
-            });
+                const data = await response.json();
+                const loader = document.getElementById(loadingId);
+                if(loader) loader.remove();
+                
+                appendMessage(data.reply, false);
+            } catch (error) {
+                const loader = document.getElementById(loadingId);
+                if(loader) loader.innerText = "Error: Could not connect to AI.";
+                console.error(error);
+            }
+        }
+
+        sendMessageBtn.addEventListener('click', handleSend);
+
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleSend();
         });
-    </script>
+
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        if(exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', function() {
+                window.location.href = '{{ route("admin.api.lectures.attendance.export", $lecture->id) }}';
+            });
+        }
+    });
+</script>
 </x-admin-layout>
