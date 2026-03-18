@@ -16,6 +16,7 @@ class LectureFile extends Model
         'file_type',
         'file_size',
         'uploaded_by',
+        'extracted_text',
     ];
 
     protected $casts = [

@@ -42,3 +42,4 @@ class SendProfessorLectureReminder implements ShouldQueue
 
 
 
+

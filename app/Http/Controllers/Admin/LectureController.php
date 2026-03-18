@@ -19,25 +19,28 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use App\Services\GeminiService;
+use Smalot\PdfParser\Parser;
 
 class LectureController extends Controller
 { 
-    public function index(Request $request)
-    {
-        if ($request->expectsJson()) {
-            $query = Lecture::with(['hall', 'user', 'subject']);
-            if (Auth::user()->role === 'professor') {
-                $query->where('user_id', Auth::id());
-            }
-            return $query->get();
+  public function index(Request $request)
+{
+    if ($request->expectsJson()) {
+        // أضفنا lectureFiles للعلاقات التي يتم جلبها
+        $query = Lecture::with(['hall', 'user', 'subject', 'lectureFiles']); 
+        
+        if (Auth::user()->role === 'professor') {
+            $query->where('user_id', Auth::id());
         }
-
-        $halls = Hall::all();
-        $subjects = Subject::all();
-        $departments = \App\Models\Department::all();
-        $professors = User::where('role', 'professor')->get();
-        return view('admin.lecture-management', compact('halls', 'subjects', 'departments', 'professors'));
+        return $query->get();
     }
+
+    $halls = Hall::all();
+    $subjects = Subject::all();
+    $departments = \App\Models\Department::all();
+    $professors = User::where('role', 'professor')->get();
+    return view('admin.lecture-management', compact('halls', 'subjects', 'departments', 'professors'));
+}
 
 
 
@@ -481,88 +484,123 @@ class LectureController extends Controller
     /**
      * Upload a file for a lecture
      */
-    public function uploadFile(Request $request, string $lectureId)
-    {
-        try {
-            Log::info('Upload file request started', [
-                'lectureId' => $lectureId,
-                'hasFile' => $request->hasFile('file'),
-                'allFiles' => $request->files->all(),
-                'userId' => Auth::id(),
-                'userRole' => Auth::user()->role ?? 'guest'
-            ]);
+    /**
+ * Upload a file for a lecture and extract text (Enhanced Debug Version)
+ */
+public function uploadFile(Request $request, string $lectureId)
+{
+    try {
+        // 1. التحقق من الملف
+        $request->validate([
+            'file' => 'required|file|max:51200', 
+        ]);
 
-            // Validate the request
-            $validated = $request->validate([
-                'file' => 'required|file|max:51200', // Max 50MB
-            ]);
-
-            // Find the lecture
-            $lecture = Lecture::find($lectureId);
-            
-            if (!$lecture) {
-                Log::error('Lecture not found', ['lectureId' => $lectureId]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Lecture not found.'
-                ], 404);
-            }
-
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
-                $fileName = $file->getClientOriginalName();
-                $fileType = $file->getMimeType();
-                $fileSize = $file->getSize();
-
-                Log::info('File details', [
-                    'fileName' => $fileName,
-                    'fileType' => $fileType,
-                    'fileSize' => $fileSize
-                ]);
-
-                // Store file in private storage
-                $path = $file->store('lecture-files/' . $lectureId, 'local');
-
-                Log::info('File stored at path: ' . $path);
-
-                $lectureFile = LectureFile::create([
-                    'lecture_id' => $lectureId,
-                    'file_name' => $fileName,
-                    'file_path' => $path,
-                    'file_type' => $fileType,
-                    'file_size' => $fileSize,
-                    'uploaded_by' => Auth::id(),
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'File uploaded successfully!',
-                    'data' => $lectureFile
-                ], 201);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'No file uploaded.'
-            ], 400);
-            
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Validation error during file upload', ['errors' => $e->errors()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed: ' . implode(', ', array_flatten($e->errors()))
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error uploading file: ' . $e->getMessage(), [
-                'exception' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload file: ' . $e->getMessage()
-            ], 500);
+        $lecture = Lecture::find($lectureId);
+        if (!$lecture) {
+            return response()->json(['success' => false, 'message' => 'المحاضرة غير موجودة'], 404);
         }
-    }
 
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = $file->getClientOriginalName();
+            $fileType = $file->getMimeType();
+            $fileSize = $file->getSize();
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            // 2. حفظ الملف في disk('local')
+            $path = $file->store('lecture-files/' . $lectureId, 'local');
+
+            // 3. تهيئة متغير النص المستخرج بقيمة افتراضية للفحص
+            $extractedText = "لم تبدأ عملية الاستخراج بعد"; 
+
+            // 4. معالجة ملفات PDF فقط
+            if ($extension == 'pdf') {
+                try {
+                    $parser = new \Smalot\PdfParser\Parser();
+                    
+                    // الحصول على المسار الكامل المتوافق مع Windows
+                    $fullPath = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+
+                    // محاولة القراءة
+                    $pdf = $parser->parseFile($fullPath);
+                    $rawText = $pdf->getText();
+                    
+                    // تنظيف النص
+                    $cleanedText = trim(preg_replace('/\s+/', ' ', $rawText));
+
+                    if (empty($cleanedText)) {
+                        $extractedText = "تنبيه: تم فتح الملف بنجاح ولكن لم يتم العثور على نصوص برمجية (غالباً الملف عبارة عن صور Scan).";
+                    } else {
+                        $extractedText = $cleanedText;
+                    }
+
+                } catch (\Exception $e) {
+                    // في حال حدث خطأ برمي (مثل ملف محمي بكلمة سر أو مكتبة ناقصة)
+                    \Illuminate\Support\Facades\Log::error('PDF Extraction Error: ' . $e->getMessage());
+                    $extractedText = "فشل الاستخراج تقنياً: " . $e->getMessage();
+                }
+            } else {
+                $extractedText = "تم الرفع بنجاح، ولكن لم يتم استخراج النص لأن نوع الملف ليس PDF (النوع الحالي: $extension).";
+            }
+
+            // 5. حفظ السجل في قاعدة البيانات
+            $lectureFile = LectureFile::create([
+                'lecture_id' => $lectureId,
+                'file_name' => $fileName,
+                'file_path' => $path,
+                'file_type' => $fileType,
+                'file_size' => $fileSize,
+                'uploaded_by' => \Illuminate\Support\Facades\Auth::id(),
+                'extracted_text' => $extractedText, // هنا سيتم تخزين النص أو رسالة الخطأ
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم الرفع! تفقد عمود extracted_text في قاعدة البيانات.',
+                'data' => $lectureFile
+            ], 201);
+        }
+
+        return response()->json(['success' => false, 'message' => 'لا يوجد ملف'], 400);
+        
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('General Upload Error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'خطأ غير متوقع: ' . $e->getMessage()], 500);
+    }
+}
+public function getLecturesBySubject($subject_id)
+{
+    // جلب كل المحاضرات المرتبطة بالمادة مع ملفاتها
+    // أضفنا شرط بسيط للتأكد من جلب الملفات التي تحتوي على نص مستخرج فقط إذا أردتِ فلترة القائمة
+    $lectures = Lecture::with(['lectureFiles' => function($query) {
+                    $query->select('id', 'lecture_id', 'file_name', 'extracted_text');
+                }])
+                ->where('subject_id', $subject_id)
+                ->get(['id', 'title', 'subject_id']); 
+
+    return response()->json($lectures);
+}
+public function getFileContent($fileId)
+{
+    try {
+        $file = LectureFile::findOrFail($fileId);
+
+        // التحقق إذا كان النص فارغ أو لسه ما استخرج
+        if (empty($file->extracted_text) || $file->extracted_text == "لم تبدأ عملية الاستخراج بعد") {
+            return response()->json([
+                'success' => false, 
+                'message' => 'هذا الملف لا يحتوي على نص مستخرج بعد.'
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'extracted_text' => $file->extracted_text
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'الملف غير موجود'], 404);
+    }
+}
     /**
      * Get files for a lecture
      */

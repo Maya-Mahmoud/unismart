@@ -183,6 +183,11 @@ Route::get('attendance', [StudentDashboardController::class, 'attendance'])->nam
     Route::get('lecture-files/{fileId}/view', [LectureController::class, 'viewFile'])->name('student.lecture-files.view');
 });
 Route::post('/admin/chat-with-ai', [ChatController::class, 'handleChat'])->name('admin.ai.chat');
+Route::get('/files/{fileId}/content', [LectureController::class, 'getFileContent']);
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/lectures/get-by-subject/{subject_id}', [App\Http\Controllers\Admin\LectureController::class, 'getLecturesBySubject']);
+    
+});
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');

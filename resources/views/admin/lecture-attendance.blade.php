@@ -26,6 +26,7 @@
         {{-- Lecture Info Card --}}
         <div class="bg-white p-8 border border-green-100 rounded-xl shadow-md hall-card">
             <div class="flex flex-wrap justify-between items-start gap-y-4">
+                {{-- Date Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-purple-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,6 +43,7 @@
                     </div>
                 </div>
 
+                {{-- Time Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-blue-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,6 +65,7 @@
                     </div>
                 </div>
 
+                {{-- Location Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-green-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,6 +83,7 @@
                     </div>
                 </div>
 
+                {{-- Professor Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-red-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +100,7 @@
                     </div>
                 </div>
 
+                {{-- Total Students --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-green-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,9 +108,7 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-base font-medium text-black-700">
-                            Total Students
-                        </p>
+                        <p class="text-base font-medium text-black-700">Total Students</p>
                         <p class="text-2xl font-bold text-gray-900">{{ $totalStudents }}</p>
                     </div>
                 </div>
@@ -160,7 +163,7 @@
             </div>
         </div>
 
-        {{-- Gemini Assistant Chat Card --}}
+        {{-- Gemini Assistant Chat Card (Veloria AI) --}}
         <div class="mt-8 bg-white rounded-3xl shadow-xl overflow-hidden border border-purple-100 flex flex-col md:flex-row h-[550px]">
             <div class="w-full md:w-80 bg-gradient-to-br from-purple-700 via-indigo-800 to-indigo-950 p-8 text-white flex flex-col justify-between relative">
                 <div class="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
@@ -209,18 +212,16 @@
                     </div>
                 </div>
 
+                {{-- Input Area --}}
                 <div class="p-6 bg-white border-t border-gray-100">
-                    {{-- شريط معاينة الملف --}}
                     <div id="filePreview" class="mb-2 px-3 py-2 bg-purple-50 text-purple-700 text-xs rounded-xl hidden flex items-center justify-between border border-purple-100 shadow-sm">
                         <span id="fileNameDisplay" class="truncate max-w-[250px] font-medium"></span>
                         <button onclick="clearFile()" class="ml-2 text-rose-500 hover:text-rose-700 font-bold bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">×</button>
                     </div>
 
                     <div class="relative flex items-center gap-3">
-                        {{-- مدخل الملف المخفي --}}
                         <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf,.doc,.docx" onchange="handleFileSelect(this)">
                         
-                        {{-- زر إضافة الملف (الزائد) --}}
                         <button type="button" onclick="document.getElementById('fileInput').click()" class="h-12 w-12 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200 transition flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -263,127 +264,227 @@
         </div>
     </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <script>
-    function formatMessage(text) {
-        return marked.parse(text);
-    }
-
-    function appendMessage(msg, isUser = false) {
-        const chatMessages = document.getElementById('chatMessages');
-        const alignment = isUser ? 'justify-end' : 'justify-start';
-        const bgColor = isUser ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200 text-gray-900 shadow-sm';
-        const rounded = isUser ? 'rounded-tr-none' : 'rounded-tl-none';
-        
-        const finalContent = isUser ? msg : formatMessage(msg);
-
-        const icon = isUser ? '' : `
-            <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>`;
-        
-        const msgHtml = `
-            <div class="flex ${alignment} items-start transition-all duration-300">
-                ${icon}
-                <div dir="auto" class="${bgColor} p-4 rounded-2xl ${rounded} text-base max-w-[85%] leading-relaxed font-medium ${!isUser ? 'prose prose-base prose-purple' : ''}">
-                    ${finalContent}
+    {{-- Modal: Lecture Selection for Quiz Generation --}}
+    <div id="lectureSelectionModal" class="fixed inset-0 z-[100] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="relative flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative z-10 border border-purple-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-gray-900">Generate Quiz 💡</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">×</button>
                 </div>
-            </div>`;
-        
-        chatMessages.insertAdjacentHTML('beforeend', msgHtml);
-        chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
-    }
+                <p class="text-sm text-gray-500 mb-6">Select the specific files to include in AI generation:</p>
+                
+                {{-- Container for dynamic list --}}
+                <div id="lecturesListContainer" class="space-y-3 max-h-64 overflow-y-auto mb-8 pr-2 custom-scrollbar">
+                    <div class="flex items-center justify-center py-10">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+                </div>
 
-    // دوال إدارة الملفات الجديدة
-    function handleFileSelect(input) {
-        const preview = document.getElementById('filePreview');
-        const nameDisplay = document.getElementById('fileNameDisplay');
-        if (input.files && input.files[0]) {
-            nameDisplay.innerText = "📎 Selected: " + input.files[0].name;
-            preview.classList.remove('hidden');
+                <div class="flex gap-4">
+                    <button onclick="confirmSelection()" id="generateQuizBtn" class="flex-1 bg-purple-600 text-white py-3.5 rounded-2xl font-bold hover:bg-purple-700 transition shadow-lg shadow-purple-200 active:scale-95 disabled:bg-gray-400 disabled:shadow-none">
+                        Generate Now 🚀
+                    </button>
+                    <button onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-2xl font-bold hover:bg-gray-200 transition active:scale-95">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        function formatMessage(text) { return marked.parse(text); }
+
+        function appendMessage(msg, isUser = false) {
+            const chatMessages = document.getElementById('chatMessages');
+            const alignment = isUser ? 'justify-end' : 'justify-start';
+            const bgColor = isUser ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200 text-gray-900 shadow-sm';
+            const rounded = isUser ? 'rounded-tr-none' : 'rounded-tl-none';
+            const finalContent = isUser ? msg : formatMessage(msg);
+
+            const icon = isUser ? '' : `
+                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>`;
+            
+            const msgHtml = `
+                <div class="flex ${alignment} items-start mb-4 transition-all duration-300">
+                    ${icon}
+                    <div dir="auto" class="${bgColor} p-4 rounded-2xl ${rounded} text-base max-w-[85%] leading-relaxed font-medium ${!isUser ? 'prose prose-sm prose-purple' : ''}">
+                        ${finalContent}
+                    </div>
+                </div>`;
+            
+            chatMessages.insertAdjacentHTML('beforeend', msgHtml);
+            chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
         }
-    }
 
-    function clearFile() {
-        const fileInput = document.getElementById('fileInput');
-        const preview = document.getElementById('filePreview');
-        fileInput.value = '';
-        preview.classList.add('hidden');
-    }
-
-    function quickAction(command) {
-        const input = document.getElementById('userInput');
-        input.value = command;
-        document.getElementById('sendMessageBtn').click();
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const sendMessageBtn = document.getElementById('sendMessageBtn');
-        const userInput = document.getElementById('userInput');
-
-        async function handleSend() {
-            const msg = userInput.value.trim();
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-
-            if (!msg && !file) return;
-
-            // عرض الرسالة في الواجهة
-            let displayMsg = msg;
-            if (file) displayMsg += `<br><span class="text-xs opacity-70 italic font-normal">[Attached: ${file.name}]</span>`;
-            appendMessage(displayMsg, true);
-
-            // تصفير المدخلات
-            userInput.value = '';
-            clearFile();
-
-            const loadingId = 'loading-' + Date.now();
-            const loadingHtml = `<div id="${loadingId}" class="text-xs text-black-400 italic ml-10 animate-pulse">Veloria AI is analyzing...</div>`;
-            document.getElementById('chatMessages').insertAdjacentHTML('beforeend', loadingHtml);
-
-            // استخدام FormData لإرسال الرسالة والملف معاً
-            const formData = new FormData();
-            formData.append('message', msg);
-            formData.append('lecture_id', "{{ $lecture->id }}");
-            if (file) {
-                formData.append('attachment', file);
+        function handleFileSelect(input) {
+            const preview = document.getElementById('filePreview');
+            const nameDisplay = document.getElementById('fileNameDisplay');
+            if (input.files && input.files[0]) {
+                nameDisplay.innerText = "📎 Selected: " + input.files[0].name;
+                preview.classList.remove('hidden');
             }
+        }
+
+        function clearFile() {
+            const fileInput = document.getElementById('fileInput');
+            const preview = document.getElementById('filePreview');
+            fileInput.value = '';
+            preview.classList.add('hidden');
+        }
+
+        // --- التعديل الجوهري هنا ---
+        async function openModal() {
+            const modal = document.getElementById('lectureSelectionModal');
+            const container = document.getElementById('lecturesListContainer');
+            modal.classList.remove('hidden');
+            const subjectId = "{{ $lecture->subject_id }}"; 
 
             try {
-                const response = await fetch("{{ route('admin.ai.chat') }}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        // لا نضع Content-Type مع FormData
-                    },
-                    body: formData
-                });
+                const response = await fetch(`/admin/lectures/get-by-subject/${subjectId}`);
+                const lectures = await response.json();
+                container.innerHTML = ''; 
 
-                const data = await response.json();
-                const loader = document.getElementById(loadingId);
-                if(loader) loader.remove();
-                
-                appendMessage(data.reply, false);
+                if(lectures.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center">No lectures found.</p>';
+                    return;
+                }
+
+                lectures.forEach(lec => {
+                    // إذا كانت المحاضرة تحتوي على ملفات
+                    if (lec.lecture_files && lec.lecture_files.length > 0) {
+                        // عمل Loop على الملفات لإنشاء Checkbox لكل ملف
+                        lec.lecture_files.forEach(file => {
+                            const itemHtml = `
+                                <label class="flex items-center p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-300 transition cursor-pointer group mb-2">
+                                    <input type="checkbox" name="selected_files" value="${file.id}" 
+                                           class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <div class="ml-4">
+                                        <p class="text-sm font-bold text-gray-900 group-hover:text-purple-700">${file.file_name}</p>
+                                        <p class="text-xs text-gray-500">Lecture: ${lec.title}</p>
+                                    </div>
+                                </label>`;
+                            container.insertAdjacentHTML('beforeend', itemHtml);
+                        });
+                    } else {
+                        // إذا المحاضرة ما فيها ملفات، ممكن نعرض تنبيه بسيط
+                        const emptyHtml = `
+                            <div class="flex items-center p-4 bg-gray-50 opacity-50 rounded-2xl border border-gray-100 mb-2">
+                                <div class="ml-10">
+                                    <p class="text-sm font-medium text-gray-400">No files in: ${lec.title}</p>
+                                </div>
+                            </div>`;
+                        container.insertAdjacentHTML('beforeend', emptyHtml);
+                    }
+                });
             } catch (error) {
-                const loader = document.getElementById(loadingId);
-                if(loader) loader.innerText = "Error: Could not connect to AI.";
-                console.error(error);
+                container.innerHTML = '<p class="text-red-500 text-center text-sm">Failed to load lectures.</p>';
+                console.error('Error:', error);
             }
         }
 
-        sendMessageBtn.addEventListener('click', handleSend);
-
-        userInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') handleSend();
-        });
-
-        const exportCsvBtn = document.getElementById('exportCsvBtn');
-        if(exportCsvBtn) {
-            exportCsvBtn.addEventListener('click', function() {
-                window.location.href = '{{ route("admin.api.lectures.attendance.export", $lecture->id) }}';
-            });
+        function closeModal() {
+            document.getElementById('lectureSelectionModal').classList.add('hidden');
         }
-    });
-</script>
+
+        function confirmSelection() {
+            // جلب الـ IDs الخاصة بالملفات المختارة
+            const selectedFiles = Array.from(document.querySelectorAll('input[name="selected_files"]:checked'))
+                                       .map(cb => cb.value);
+
+            if(selectedFiles.length === 0) {
+                alert('Please select at least one file.');
+                return;
+            }
+
+            closeModal();
+            const promptMsg = `Generate questions based on file IDs: ${selectedFiles.join(', ')}`;
+            
+            const userInput = document.getElementById('userInput');
+            userInput.value = promptMsg;
+            document.getElementById('sendMessageBtn').click();
+        }
+
+        function quickAction(command) {
+            if (command === 'Generate Questions') {
+                openModal();
+            } else {
+                const input = document.getElementById('userInput');
+                input.value = command;
+                document.getElementById('sendMessageBtn').click();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const userInput = document.getElementById('userInput');
+
+            async function handleSend() {
+                const msg = userInput.value.trim();
+                const fileInput = document.getElementById('fileInput');
+                const file = fileInput.files[0];
+
+                if (!msg && !file) return;
+
+                let displayMsg = msg;
+                if (file) displayMsg += `<br><span class="text-xs opacity-70 italic font-normal">[Attached: ${file.name}]</span>`;
+                appendMessage(displayMsg, true);
+
+                userInput.value = '';
+                clearFile();
+
+                const loadingId = 'loading-' + Date.now();
+                const loadingHtml = `<div id="${loadingId}" class="text-xs text-purple-400 italic ml-14 mb-4 animate-pulse">Veloria AI is analyzing...</div>`;
+                document.getElementById('chatMessages').insertAdjacentHTML('beforeend', loadingHtml);
+
+                const formData = new FormData();
+                formData.append('message', msg);
+                formData.append('lecture_id', "{{ $lecture->id }}");
+                if (file) formData.append('attachment', file);
+
+                try {
+                    const response = await fetch("{{ route('admin.ai.chat') }}", {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    document.getElementById(loadingId)?.remove();
+                    
+                    if(data.reply) {
+                        appendMessage(data.reply, false);
+                    } else {
+                        appendMessage("Sorry, I couldn't process that request.", false);
+                    }
+                } catch (error) {
+                    if(document.getElementById(loadingId)) {
+                        document.getElementById(loadingId).innerText = "Error: Could not connect to AI.";
+                    }
+                    console.error(error);
+                }
+            }
+
+            sendMessageBtn.addEventListener('click', handleSend);
+            userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            if(exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', function() {
+                    window.location.href = '{{ route("admin.api.lectures.attendance.export", $lecture->id) }}';
+                });
+            }
+        });
+    </script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+    </style>
 </x-admin-layout>
