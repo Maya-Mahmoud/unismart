@@ -14,6 +14,7 @@ use App\Http\Controllers\StudentChatController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ChatController;
+use App\Http\Controllers\QuizController;
 use Illuminate\Support\Facades\Auth;
 
 Route::middleware([AdminOrProfessorMiddleware::class])->prefix('admin/api')->group(function () {
@@ -190,6 +191,7 @@ Route::middleware(['auth'])->group(function () {
 });
 Route::get('/scan/file/{id}', [StudentDashboardController::class, 'handleFileScan'])->name('file.scan.handle');
 Route::get('/quiz/play/{id}', [StudentDashboardController::class, 'playQuiz'])->name('student.quiz.play');
+Route::post('/quiz/save-result', [QuizController::class, 'saveResult'])->name('quiz.save');
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');

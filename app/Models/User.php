@@ -96,4 +96,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(Student::class);
     }
+  
+public function quizResults()
+{
+    return $this->hasMany(QuizResult::class);
+}
 }

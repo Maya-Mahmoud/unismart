@@ -405,35 +405,57 @@ class LectureController extends Controller
 
 
     public function exportAttendance($id)
-    {
-        $lecture = Lecture::findOrFail($id);
-        $attendances = \App\Models\LectureAttendance::with(['student.user'])
-            ->where('lecture_id', $id)
-            ->get();
+{
+    $lecture = Lecture::findOrFail($id);
+    
+    // جلب ملف الاختبار المرتبط بهذه المحاضرة (نختار أول ملف من نوع JSON مثلاً)
+    $quizFile = \App\Models\LectureFile::where('lecture_id', $id)
+        ->where('file_type', 'application/json')
+        ->first();
 
-        $filename = 'lecture_attendance_' . $lecture->id . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
+    $attendances = \App\Models\LectureAttendance::with(['student.user'])
+        ->where('lecture_id', $id)
+        ->get();
 
-        $callback = function() use ($attendances) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['Student Name', 'Status', 'Scanned At']);
+    $filename = 'lecture_attendance_' . $lecture->id . '.csv';
+    $headers = [
+        'Content-Type' => 'text/csv',
+        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+    ];
 
-            foreach ($attendances as $attendance) {
-                fputcsv($file, [
-                    $attendance->student->user->name,
-                    ucfirst($attendance->status),
-                    $attendance->scanned_at ? $attendance->scanned_at->format('Y-m-d H:i:s') : 'N/A'
-                ]);
+    // نمرر الـ $quizFile للكول باك لنستخدمه في البحث عن العلامة
+    $callback = function() use ($attendances, $quizFile) {
+        $file = fopen('php://output', 'w');
+        // إضافة عمود "Quiz Score" للرأس (Header)
+        fputcsv($file, ['Student Name', 'Status', 'Scanned At', 'Quiz Score']);
+
+        foreach ($attendances as $attendance) {
+            $score = 'N/A'; // القيمة الافتراضية إذا لم يوجد اختبار أو لم يحل الطالب
+
+            if ($quizFile) {
+                // البحث عن نتيجة هذا الطالب لهذا الملف تحديداً
+                $result = \App\Models\QuizResult::where('user_id', $attendance->student->user_id)
+                    ->where('lecture_file_id', $quizFile->id)
+                    ->first();
+                
+                if ($result) {
+                    $score = $result->score . '%'; // مثلاً 85%
+                }
             }
 
-            fclose($file);
-        };
+            fputcsv($file, [
+                $attendance->student->user->name,
+                ucfirst($attendance->status),
+                $attendance->scanned_at ? $attendance->scanned_at->format('Y-m-d H:i:s') : 'N/A',
+                $score // إضافة النتيجة للسطر
+            ]);
+        }
 
-        return response()->stream($callback, 200, $headers);
-    }
+        fclose($file);
+    };
+
+    return response()->stream($callback, 200, $headers);
+}
 
     private function sendLectureNotifications(Lecture $lecture)
     {

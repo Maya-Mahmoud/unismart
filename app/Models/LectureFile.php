@@ -32,4 +32,10 @@ class LectureFile extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+    
+
+public function results()
+{
+    return $this->hasMany(QuizResult::class);
+}
 }

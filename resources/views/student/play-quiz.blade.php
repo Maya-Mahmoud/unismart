@@ -31,7 +31,6 @@
 </div>
 
 <script>
-    // 1. متغيرات التحكم والنتيجة والوقت
     let totalQuestions = 0;
     let correctAnswers = 0;
     let answeredCount = 0;
@@ -41,12 +40,11 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         try {
-            // 2. استلام البيانات الممررة من الكنترولر (JSON)
             const questions = {!! $quizData !!}; 
             totalQuestions = questions.length;
             
-            // ضبط الوقت: نص دقيقة واحدة لكل سؤال
-            totalInitialTime = totalQuestions * 30;
+            // ضبط الوقت: 15 ثانية لكل سؤال كما طلبتِ
+            totalInitialTime = totalQuestions * 15;
             timeLeft = totalInitialTime;
             
             renderStudentQuiz(questions);
@@ -60,7 +58,6 @@
         }
     });
 
-    // 3. دالة بدء المؤقت
     function startTimer() {
         const timerContainer = document.getElementById('timer-container');
         const timeClock = document.getElementById('time-clock');
@@ -72,29 +69,25 @@
             let minutes = Math.floor(timeLeft / 60);
             let seconds = timeLeft % 60;
 
-            // تحديث الساعة الرقمية
             timeClock.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-            // تحديث شريط التقدم
             const progressWidth = (timeLeft / totalInitialTime) * 100;
             progressBar.style.width = `${progressWidth}%`;
 
-            // تغيير اللون للأحمر إذا بقي أقل من 30 ثانية
-            if (timeLeft <= 30) {
+            if (timeLeft <= 10) { 
                 timeClock.classList.replace('text-amber-600', 'text-rose-600');
                 progressBar.classList.replace('from-amber-400', 'from-rose-500');
             }
 
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
-                showFinalResult(true); // إنهاء الاختبار بسبب الوقت
+                showFinalResult(true); 
             }
             
             timeLeft--;
         }, 1000);
     }
 
-    // 4. دالة عرض الأسئلة
     function renderStudentQuiz(questions) {
         const container = document.getElementById('quiz-content');
         container.innerHTML = questions.map((q, index) => `
@@ -119,7 +112,6 @@
         `).join('');
     }
 
-    // 5. دالة معالجة الإجابة
     function submitAnswer(btn, selected, correct) {
         const parent = btn.closest('.grid');
         const feedback = btn.parentElement.nextElementSibling;
@@ -151,14 +143,31 @@
         }
     }
 
-    // 6. دالة عرض النتيجة النهائية
     function showFinalResult(isTimeOut = false) {
-        clearInterval(timerInterval); // إيقاف المؤقت
+        clearInterval(timerInterval);
         document.getElementById('timer-container').classList.add('hidden');
 
-        const container = document.getElementById('quiz-content');
         const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
-        
+
+        // إرسال النتيجة للداتابيز عبر Route: quiz.save
+        fetch("{{ route('quiz.save') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({
+                file_id: "{{ $file->id }}",
+                score: scorePercentage,
+                correct: correctAnswers,
+                total: totalQuestions
+            })
+        })
+        .then(response => response.json())
+        .then(data => console.log("Success:", data))
+        .catch(error => console.error("Error:", error));
+
+        const container = document.getElementById('quiz-content');
         const message = isTimeOut 
             ? "⏱️ Time is up! Your answers have been submitted." 
             : "Your response has been recorded. Good job!";
@@ -180,8 +189,8 @@
                     </div>
                 </div>
 
-                <div class="flex justify-center">
-                    <a href="{{ url('/student/subjects') }}" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-12 py-4 rounded-2xl font-bold shadow-lg shadow-purple-200 hover:scale-105 transition-all">
+                <div class="flex justify-center gap-4">
+                     <a href="{{ url('/student/subjects') }}" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-12 py-4 rounded-2xl font-bold shadow-lg shadow-purple-200 hover:scale-105 transition-all">
                         Back to Library
                     </a>
                 </div>
@@ -192,22 +201,10 @@
 </script>
 
 <style>
-    .option-btn:hover:not(:disabled) {
-        transform: translateY(-3px);
-    }
-    .animate-fade-in {
-        animation: fadeIn 0.5s ease-out;
-    }
-    .animate-bounce-in {
-        animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes bounceIn {
-        from { transform: scale(0.8); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-    }
+    .option-btn:hover:not(:disabled) { transform: translateY(-3px); }
+    .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+    .animate-bounce-in { animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bounceIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 </style>
 @endsection
