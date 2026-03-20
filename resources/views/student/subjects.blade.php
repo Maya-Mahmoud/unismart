@@ -55,21 +55,45 @@
             @else
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach($files as $file)
-                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
+                        @php
+                            $isQuiz = ($file->file_type === 'application/json');
+                        @endphp
+                        <div class="bg-gradient-to-br {{ $isQuiz ? 'from-purple-50 to-indigo-50 border-purple-200' : 'from-blue-50 to-indigo-50 border-blue-200' }} border rounded-xl p-6 hover:shadow-lg transition-all duration-300">
                             <div class="flex items-center mb-4">
                                 <div class="flex-shrink-0">
-                                    <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
+                                    @if($isQuiz)
+                                        {{-- أيقونة الاختبار التفاعلي --}}
+                                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 shadow-sm">
+                                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                            </svg>
+                                        </div>
+                                    @else
+                                        {{-- أيقونة الملف العادي --}}
+                                        <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                    @endif
                                 </div>
                                 <div class="ml-4 flex-1">
                                     <h3 class="font-semibold text-gray-900 text-lg truncate">{{ $file->file_name }}</h3>
                                     <p class="text-sm text-gray-600">Lecture: {{ $file->lecture->title ?? 'Not specified' }}</p>
                                 </div>
                             </div>
+                            
                             <div class="flex space-x-2">
-                                <a href="/student/lecture-files/{{ $file->id }}/view" target="_blank" class="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm text-center font-medium text-gray-700 hover:bg-gray-50">Preview</a>
-                                <a href="/student/lecture-files/{{ $file->id }}/download" class="flex-1 bg-green-500 text-white rounded-lg px-4 py-2 text-sm text-center font-medium hover:bg-green-600">Download</a>
+                                @if($isQuiz)
+                                    {{-- زر تشغيل الاختبار التفاعلي --}}
+                                    <a href="{{ route('student.quiz.play', $file->id) }}" 
+                                       class="flex-1 bg-purple-600 text-white rounded-lg px-4 py-3 text-sm text-center font-bold hover:bg-purple-700 shadow-md transition-all flex items-center justify-center">
+                                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"></path></svg>
+                                        Start Quiz
+                                    </a>
+                                @else
+                                    {{-- أزرار الملفات العادية --}}
+                                    <a href="/student/lecture-files/{{ $file->id }}/view" target="_blank" class="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm text-center font-medium text-gray-700 hover:bg-gray-50 shadow-sm">Preview</a>
+                                    <a href="/student/lecture-files/{{ $file->id }}/download" class="flex-1 bg-green-500 text-white rounded-lg px-4 py-2 text-sm text-center font-medium hover:bg-green-600 shadow-sm">Download</a>
+                                @endif
                             </div>
                         </div>
                     @endforeach
@@ -91,7 +115,7 @@
                         @php
                             $hasFiles = \App\Models\LectureFile::whereHas('lecture.subject', fn($q) => $q->where('id', $subject->id))->exists();
                         @endphp
-                        <div class="group bg-white border-2 {{ $hasFiles ? 'border-green-300' : 'border-gray-200' }} rounded-xl p-8 shadow-sm hover:shadow-md cursor-pointer" onclick="window.location.href='{{ route('student.subjects.files', $subject->id) }}'">
+                        <div class="group bg-white border-2 {{ $hasFiles ? 'border-green-300' : 'border-gray-200' }} rounded-xl p-8 shadow-sm hover:shadow-md cursor-pointer transition-all" onclick="window.location.href='{{ route('student.subjects.files', $subject->id) }}'">
                             <h3 class="text-xl font-bold text-gray-900 mb-1">{{ $subject->name }}</h3>
                             <p class="text-sm text-gray-500">{{ $subject->department }}</p>
                             <span class="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $hasFiles ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700' }}">

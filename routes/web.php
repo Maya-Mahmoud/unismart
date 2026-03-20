@@ -188,6 +188,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/lectures/get-by-subject/{subject_id}', [App\Http\Controllers\Admin\LectureController::class, 'getLecturesBySubject']);
     
 });
+Route::get('/scan/file/{id}', [StudentDashboardController::class, 'handleFileScan'])->name('file.scan.handle');
+Route::get('/quiz/play/{id}', [StudentDashboardController::class, 'playQuiz'])->name('student.quiz.play');
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');

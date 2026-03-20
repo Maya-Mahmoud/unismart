@@ -9,6 +9,7 @@ use App\Models\Subject;
 use App\Models\LectureAttendance;
 use App\Models\StudentSubjectAttendance;
 use App\Models\LectureFile;
+use Illuminate\Support\Facades\Log;
 
 class StudentDashboardController extends Controller
 {
@@ -137,5 +138,35 @@ class StudentDashboardController extends Controller
 
         return view('student.subjects', compact('subjectModel', 'files', 'displayYear', 'displaySemester'));
     }
+    // 1. تابع معالجة الرابط بعد السكان
+public function handleFileScan($fileId)
+{
+    $file = LectureFile::findOrFail($fileId);
+
+    // التحقق من نوع الملف في قاعدة البيانات
+    if ($file->file_type === 'application/json') {
+        // إذا كان اختبار، نرسله لصفحة التشغيل التفاعلية
+        return redirect()->route('student.quiz.play', ['id' => $file->id]);
+    }
+
+    // إذا كان PDF أو غيره، نفتحه بشكل طبيعي في المتصفح
+    return response()->file(storage_path('app/public/' . $file->file_path));
+}
+
+// 2. تابع عرض صفحة الاختبار للطالب
+ public function playQuiz($id) {
+    $file = \App\Models\LectureFile::with('lecture')->findOrFail($id);
+    
+    // قراءة الملف من المجلد الخاص (Private)
+    $path = storage_path('app/private/' . $file->file_path);
+    
+    if (!file_exists($path)) {
+        return abort(404, "Quiz file not found");
+    }
+
+    $quizData = file_get_contents($path);
+
+    return view('student.play-quiz', compact('file', 'quizData'));
+}
 }
 
