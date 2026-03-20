@@ -436,218 +436,246 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-        // دالة تحميل ملف الـ JSON على الجهاز
-function downloadQuizAsFile(jsonData) {
-    try {
-        const dataStr = JSON.stringify(jsonData, null, 2); // تنسيق الـ JSON ليطلع مرتب
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        
-        // تسمية الملف باسم المحاضرة مع تاريخ اليوم
-        const date = new Date().toISOString().slice(0, 10);
-        a.download = `Quiz_{{ $lecture->id }}_${date}.json`;
-        
-        a.href = url;
-        document.body.appendChild(a);
-        a.click();
-        
-        // تنظيف الذاكرة
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        alert("Done! Your quiz is downloaded. Now you can upload it in the lecture files. 📥");
-    } catch (e) {
-        console.error("Download failed", e);
-        alert("Something went wrong with the download.");
+   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    // 1. التحقق من JSON بصيغة مرنة
+    const isJson = (str) => { 
+        try { 
+            const trimmed = str.trim();
+            if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+                JSON.parse(trimmed);
+                return true;
+            }
+        } catch (e) { return false; }
+        return false;
+    };
+
+    // 2. دالة تحميل ملف الـ JSON
+    function downloadQuizAsFile(jsonData) {
+        try {
+            const dataStr = JSON.stringify(jsonData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const date = new Date().toISOString().slice(0, 10);
+            a.download = `Quiz_{{ $lecture->id }}_${date}.json`;
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            alert("Done! Your quiz is downloaded. 📥");
+        } catch (e) {
+            console.error("Download failed", e);
+        }
     }
-}
-        // --- Quiz Selection Logic ---
-        async function openQuizModal() {
-            const modal = document.getElementById('quizSelectionModal');
-            const container = document.getElementById('filesListContainer');
-            modal.classList.remove('hidden');
-            
-            const subjectId = "{{ $lecture->subject_id }}";
-            try {
-                const response = await fetch(`/admin/lectures/get-by-subject/${subjectId}`);
-                const lectures = await response.json();
-                container.innerHTML = '';
 
-                let hasFiles = false;
-                lectures.forEach(lec => {
-                    if (lec.lecture_files && lec.lecture_files.length > 0) {
-                        hasFiles = true;
-                        lec.lecture_files.forEach(file => {
-                            container.insertAdjacentHTML('beforeend', `
-                                <label class="flex items-center p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-300 transition cursor-pointer group">
-                                    <input type="checkbox" name="quiz_files" value="${file.id}" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                    <div class="ml-4">
-                                        <p class="text-sm font-bold text-gray-900 group-hover:text-purple-700">${file.file_name}</p>
-                                        <p class="text-[10px] text-gray-500 uppercase">${lec.title}</p>
-                                    </div>
-                                </label>
-                            `);
-                        });
-                    }
-                });
-                if(!hasFiles) container.innerHTML = '<p class="text-center text-gray-400 py-4 italic">No files found.</p>';
-            } catch (e) {
-                container.innerHTML = '<p class="text-rose-500 text-center">Error loading files.</p>';
-            }
-        }
-
-        function closeQuizModal() { document.getElementById('quizSelectionModal').classList.add('hidden'); }
-
-        function confirmQuizFiles() {
-            const selected = Array.from(document.querySelectorAll('input[name="quiz_files"]:checked')).map(cb => cb.value);
-            if(selected.length === 0) return alert('Select at least one file!');
-            
-            closeQuizModal();
-            const msg = `Generate an interactive quiz based on these file IDs: ${selected.join(', ')}`;
-            document.getElementById('userInput').value = msg;
-            handleSend();
-        }
-
-        // --- UI & Chat Logic ---
-        const isJson = (str) => { try { JSON.parse(str); return true; } catch (e) { return false; } };
-
-        function checkUserAnswer(btn, selected, correct) {
-            const card = btn.closest('.quiz-card');
-            const feedback = card.querySelector('.feedback-area');
-            const allBtns = card.querySelectorAll('.quiz-opt-btn');
-            
-            feedback.classList.remove('hidden');
-            allBtns.forEach(b => b.disabled = true);
-
-            if (selected === correct) {
-                btn.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-700');
-                feedback.innerHTML = "✅ Correct! Well done.";
-                feedback.classList.add('text-emerald-600');
-            } else {
-                btn.classList.add('bg-rose-100', 'border-rose-500', 'text-rose-700');
-                feedback.innerHTML = `❌ Incorrect. The answer is: <b>${correct}</b>`;
-                feedback.classList.add('text-rose-600');
-            }
-        }
-
-       function renderQuiz(data) {
-    // تخزين البيانات في سمة البيانات (Data Attribute) للزر
-    const quizJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-
-    return `
-        <div class="space-y-4">
-            ${data.map((q, i) => `
-                <div class="quiz-card bg-white/40 backdrop-blur-md border border-purple-200 p-5 rounded-2xl shadow-sm">
-                    <p class="font-bold text-gray-800 mb-4 text-base">${i+1}. ${q.question}</p>
-                    <div class="grid gap-2">
-                        ${q.options.map(opt => `
-                            <button onclick="checkUserAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.answer.replace(/'/g, "\\'")}')" 
-                                    class="quiz-opt-btn text-left p-3 rounded-xl bg-white border border-gray-200 hover:border-purple-400 transition text-base font-medium text-gray-700">
-                                ${opt}
-                            </button>
-                        `).join('')}
+    // 3. عرض الكويز بشكل تفاعلي
+    function renderQuiz(data) {
+        window.lastQuizData = data; 
+        return `
+            <div class="space-y-4">
+                ${data.map((q, i) => `
+                    <div class="quiz-card bg-white/40 backdrop-blur-md border border-purple-200 p-5 rounded-2xl shadow-sm">
+                        <p class="font-bold text-gray-800 mb-4 text-base">${i+1}. ${q.question}</p>
+                        <div class="grid gap-2">
+                            ${q.options.map(opt => `
+                                <button onclick="checkUserAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.answer.replace(/'/g, "\\'")}')" 
+                                        class="quiz-opt-btn text-left p-3 rounded-xl bg-white border border-gray-200 hover:border-purple-400 transition text-base font-medium text-gray-700">
+                                    ${opt}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div class="feedback-area mt-3 hidden text-[11px] font-bold italic"></div>
                     </div>
-                    <div class="feedback-area mt-3 hidden text-[11px] font-bold italic"></div>
+                `).join('')}
+                <div class="mt-8 flex flex-col items-center p-6 bg-emerald-50 rounded-3xl border-2 border-dashed border-emerald-200 shadow-inner">
+                    <p class="text-emerald-700 font-bold mb-3 text-sm">Perfect! The interactive quiz is ready.</p>
+                    <button onclick="downloadQuizAsFile(window.lastQuizData)" 
+                            class="w-full flex items-center justify-center bg-emerald-600 text-white px-6 py-4 rounded-2xl font-extrabold hover:bg-emerald-700 transition shadow-xl transform hover:scale-[1.02]">
+                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        DOWNLOAD INTERACTIVE QUIZ (.JSON)
+                    </button>
                 </div>
-            `).join('')}
-            
-            <div class="mt-8 flex flex-col items-center p-6 bg-emerald-50 rounded-3xl border-2 border-dashed border-emerald-200 shadow-inner">
-                <p class="text-emerald-700 font-bold mb-3 text-sm">Perfect! The interactive quiz is ready.</p>
-               <button onclick="downloadQuizAsFile(window.lastQuizData)" 
-        class="w-full flex items-center justify-center bg-emerald-600 text-white px-6 py-4 rounded-2xl font-extrabold hover:bg-emerald-700 transition shadow-xl transform hover:scale-[1.02]">
-    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    DOWNLOAD INTERACTIVE QUIZ (.JSON)
-</button>
-                <p class="text-[10px] text-emerald-600/70 mt-3 italic font-semibold">Step 2: Upload this file to your lecture materials.</p>
-            </div>
-        </div>`;
-}
-       function appendMessage(msg, isUser = false) {
-    const chatMessages = document.getElementById('chatMessages');
-    const isQuiz = !isUser && isJson(msg);
-    
-    if (isQuiz) {
-        // حفظ البيانات في متغير عالمي ليسهل الوصول إليها عند الضغط على الزر
-        window.lastQuizData = JSON.parse(msg); 
+            </div>`;
     }
 
-    const content = isQuiz ? renderQuiz(window.lastQuizData) : (isUser ? msg : marked.parse(msg));
-    
-    // باقي الكود كما هو...
+    // 4. دالة إضافة الرسائل للواجهة
+   function appendMessage(msg, isUser = false) {
+    const chatMessages = document.getElementById('chatMessages');
+    let isQuiz = !isUser && isJson(msg);
     const alignment = isUser ? 'justify-end' : 'justify-start';
     const bgColor = isQuiz ? '' : (isUser ? 'bg-purple-600 text-white shadow-lg' : 'bg-white border border-gray-100 shadow-md');
     const rounded = isUser ? 'rounded-tr-none' : 'rounded-tl-none';
+    const messageId = 'msg-' + Date.now();
 
     const html = `
-        <div class="flex ${alignment} items-start mb-6">
-            ${!isUser ? `<div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>` : ''}
-            <div class="${bgColor} ${isQuiz ? 'w-full' : 'p-5 max-w-[85%]'} rounded-3xl ${rounded} text-base md:text-lg leading-relaxed font-medium">
-                ${content}
+        <div class="flex ${alignment} items-start mb-6" dir="${!isUser ? 'rtl' : 'ltr'}">
+            ${!isUser ? `<div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center ml-3 text-purple-600 border border-purple-200 shadow-sm"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>` : ''}
+            <div id="${messageId}" class="${bgColor} ${isQuiz ? 'w-full' : 'p-5 max-w-[85%]'} rounded-3xl ${rounded} text-base leading-relaxed font-medium text-right shadow-sm overflow-hidden">
+                ${isUser ? msg : (isQuiz ? renderQuiz(JSON.parse(msg)) : "")}
             </div>
         </div>`;
     
     chatMessages.insertAdjacentHTML('beforeend', html);
+    const messageContainer = document.getElementById(messageId);
+
+    if (!isUser && !isQuiz) {
+        // 1. تحويل النص كاملاً لـ HTML (للتخلص من النجوم فوراً)
+        const finalHtml = marked.parse(msg);
+        
+        // 2. تفريغ الحاوية وتجهيزها
+        messageContainer.innerHTML = ""; 
+        
+        // 3. إنشاء عنصر مؤقت لتحويل الـ HTML لنص "نظيف" بدون كود
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = finalHtml;
+        
+        // سنستخدم ميزة التدفق (Streaming) البسيطة بالكلمات
+        const words = msg.split(' ');
+        let i = 0;
+        
+        function stream() {
+            if (i < words.length) {
+                // نحدث المحتوى تدريجياً ونحوله لـ Markdown في كل خطوة
+                // هذه الطريقة تضمن أن الـ Markdown يتحدث "أثناء" الكتابة
+                const currentText = words.slice(0, i + 1).join(' ');
+                messageContainer.innerHTML = marked.parse(currentText);
+                i++;
+                chatMessages.scrollTo({ top: chatMessages.scrollHeight });
+                setTimeout(stream, 40); // سرعة مريحة جداً
+            }
+        }
+        stream();
+    }
     chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
 }
+    // 5. دالة الإرسال الأساسية (معدلة لضمان عدم التوقف)
+    async function handleSend() {
+        const input = document.getElementById('userInput');
+        const fileInput = document.getElementById('fileInput');
+        const msg = input.value.trim();
+        const file = fileInput.files[0];
 
-        async function handleSend() {
-            const input = document.getElementById('userInput');
-            const fileInput = document.getElementById('fileInput');
-            const msg = input.value.trim();
-            const file = fileInput.files[0];
+        if (!msg && !file) return;
 
-            if (!msg && !file) return;
+        appendMessage(msg + (file ? `<br><small class="opacity-70">[Attached: ${file.name}]</small>` : ''), true);
+        input.value = '';
+        clearFile();
 
-            appendMessage(msg + (file ? `<br><small class="opacity-70">[Attached: ${file.name}]</small>` : ''), true);
-            input.value = '';
-            clearFile();
+        const loadingId = 'loading-' + Date.now();
+        document.getElementById('chatMessages').insertAdjacentHTML('beforeend', `<div id="${loadingId}" class="text-[10px] text-purple-400 italic ml-10 mb-4 animate-pulse">Veloria AI is analyzing...</div>`);
 
-            const loadingId = 'loading-' + Date.now();
-            document.getElementById('chatMessages').insertAdjacentHTML('beforeend', `<div id="${loadingId}" class="text-[10px] text-purple-400 italic ml-10 mb-4 animate-pulse">Veloria AI is analyzing...</div>`);
+        const formData = new FormData();
+        formData.append('message', msg);
+        formData.append('lecture_id', "{{ $lecture->id }}");
+        if (file) formData.append('attachment', file);
 
-            const formData = new FormData();
-            formData.append('message', msg);
-            formData.append('lecture_id', "{{ $lecture->id }}");
-            if (file) formData.append('attachment', file);
-
-            try {
-                const response = await fetch("{{ route('admin.ai.chat') }}", {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    body: formData
-                });
-                const data = await response.json();
-                document.getElementById(loadingId)?.remove();
-                appendMessage(data.reply || "API Error.");
-            } catch (e) {
-                if(document.getElementById(loadingId)) document.getElementById(loadingId).innerText = "Connection error.";
-            }
+        try {
+            const response = await fetch("{{ route('admin.ai.chat') }}", {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                body: formData
+            });
+            const data = await response.json();
+            document.getElementById(loadingId)?.remove();
+            appendMessage(data.reply || "No response.");
+        } catch (e) {
+            if(document.getElementById(loadingId)) document.getElementById(loadingId).innerText = "Connection error.";
+            console.error(e);
         }
+    }
 
-        function handleFileSelect(input) {
-            const preview = document.getElementById('filePreview');
-            if (input.files[0]) {
-                document.getElementById('fileNameDisplay').innerText = "📎 Selected: " + input.files[0].name;
-                preview.classList.remove('hidden');
-            }
+    // 6. دوال مساعدة (Quick Actions, Files, Quiz Logic)
+    function checkUserAnswer(btn, selected, correct) {
+        const card = btn.closest('.quiz-card');
+        const feedback = card.querySelector('.feedback-area');
+        const allBtns = card.querySelectorAll('.quiz-opt-btn');
+        feedback.classList.remove('hidden');
+        allBtns.forEach(b => b.disabled = true);
+
+        if (selected === correct) {
+            btn.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-700');
+            feedback.innerHTML = "✅ Correct! Well done.";
+            feedback.classList.add('text-emerald-600');
+        } else {
+            btn.classList.add('bg-rose-100', 'border-rose-500', 'text-rose-700');
+            feedback.innerHTML = `❌ Incorrect. The answer is: <b>${correct}</b>`;
+            feedback.classList.add('text-rose-600');
         }
-        function clearFile() { document.getElementById('fileInput').value = ''; document.getElementById('filePreview').classList.add('hidden'); }
-        function quickAction(cmd) { document.getElementById('userInput').value = cmd; handleSend(); }
+    }
 
+    function handleFileSelect(input) {
+        const preview = document.getElementById('filePreview');
+        if (input.files[0]) {
+            document.getElementById('fileNameDisplay').innerText = "📎 Selected: " + input.files[0].name;
+            preview.classList.remove('hidden');
+        }
+    }
+
+    function clearFile() { 
+        document.getElementById('fileInput').value = ''; 
+        document.getElementById('filePreview').classList.add('hidden'); 
+    }
+
+    function quickAction(cmd) { 
+        document.getElementById('userInput').value = cmd; 
+        handleSend(); 
+    }
+
+    // --- Quiz Selection Modal ---
+    async function openQuizModal() {
+        const modal = document.getElementById('quizSelectionModal');
+        const container = document.getElementById('filesListContainer');
+        modal.classList.remove('hidden');
+        
+        try {
+            const response = await fetch(`/admin/lectures/get-by-subject/{{ $lecture->subject_id }}`);
+            const lectures = await response.json();
+            container.innerHTML = '';
+            let hasFiles = false;
+            lectures.forEach(lec => {
+                if (lec.lecture_files?.length > 0) {
+                    hasFiles = true;
+                    lec.lecture_files.forEach(file => {
+                        container.insertAdjacentHTML('beforeend', `
+                            <label class="flex items-center p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-300 transition cursor-pointer group">
+                                <input type="checkbox" name="quiz_files" value="${file.id}" class="w-5 h-5 text-purple-600 border-gray-300 rounded">
+                                <div class="ml-4">
+                                    <p class="text-sm font-bold text-gray-900 group-hover:text-purple-700">${file.file_name}</p>
+                                    <p class="text-[10px] text-gray-500 uppercase">${lec.title}</p>
+                                </div>
+                            </label>`);
+                    });
+                }
+            });
+            if(!hasFiles) container.innerHTML = '<p class="text-center text-gray-400 py-4 italic">No files found.</p>';
+        } catch (e) { container.innerHTML = '<p class="text-rose-500 text-center">Error loading files.</p>'; }
+    }
+
+    function closeQuizModal() { document.getElementById('quizSelectionModal').classList.add('hidden'); }
+
+    function confirmQuizFiles() {
+        const selected = Array.from(document.querySelectorAll('input[name="quiz_files"]:checked')).map(cb => cb.value);
+        if(selected.length === 0) return alert('Select at least one file!');
+        closeQuizModal();
+        document.getElementById('userInput').value = `Generate an interactive quiz based on these file IDs: ${selected.join(', ')}`;
+        handleSend();
+    }
+
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('sendMessageBtn').addEventListener('click', handleSend);
         document.getElementById('userInput').addEventListener('keypress', (e) => e.key === 'Enter' && handleSend());
-         document.addEventListener('DOMContentLoaded', function () {
+        
         const exportCsvBtn = document.getElementById('exportCsvBtn');
-
         if (exportCsvBtn) {
             exportCsvBtn.addEventListener('click', function () {
                 window.location.href = '{{ route("admin.api.lectures.attendance.export", $lecture->id) }}';
             });
         }
     });
-    </script>
+</script>
 
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
