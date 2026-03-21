@@ -101,4 +101,9 @@ public function quizResults()
 {
     return $this->hasMany(QuizResult::class);
 }
+public function conversations()
+{
+    // ترتيب تنازلي مشان يطلع الأحدث فوق بالـ Sidebar للشات
+    return $this->hasMany(Conversation::class)->orderBy('created_at', 'desc');
+}
 }

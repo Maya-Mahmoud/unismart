@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\GeminiService;
 use App\Models\Lecture;
+use App\Models\ChatMessage;
 use App\Models\LectureFile;
+use App\Models\Conversation;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
@@ -18,14 +21,85 @@ class ChatController extends Controller
         $this->gemini = $gemini;
     }
 
+    /**
+     * جلب قائمة المحادثات الخاصة بالمستخدم الحالي (للسجل الجانبي)
+     */
+    public function getConversations()
+    {
+        $conversations = Conversation::where('user_id', auth()->id())
+            ->orderBy('updated_at', 'desc')
+            ->take(15) // جلب آخر 15 محادثة
+            ->get(['id', 'title', 'updated_at']);
+
+        return response()->json($conversations);
+    }
+
+    /**
+     * جلب رسائل محادثة معينة عند الضغط عليها من السجل
+     */
+    public function getMessages($id)
+    {
+        $conversation = Conversation::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $messages = ChatMessage::where('conversation_id', $id)
+            ->orderBy('created_at', 'asc')
+            ->get(['role', 'content']);
+
+        return response()->json($messages);
+    }
+    private function generateSmartTitle($firstMessage)
+{
+    try {
+        $prompt = "Generate a very short, professional title (max 4 words) in the same language for this message: '$firstMessage'. Return ONLY the title text.";
+        $smartTitle = $this->gemini->askGemini($prompt);
+        
+        // تنظيف النص الناتج من أي علامات تنصيص أو مسافات زائدة
+        return trim(str_replace(['"', "'", '*', '-'], '', $smartTitle));
+    } catch (\Exception $e) {
+        // في حال فشل الذكاء الاصطناعي، نعود للطريقة التقليدية كخيار احتياطي
+        return Str::limit($firstMessage, 40);
+    }
+}
+
+    /**
+     * معالجة إرسال الرسائل (الشات الأساسي)
+     */
     public function handleChat(Request $request)
     {
         try {
             $message = $request->input('message') ?? 'Analyze context.';
             $lectureId = $request->input('lecture_id');
+            $conversationId = $request->input('conversation_id');
             $reply = "";
 
-            // 1. Handling Direct File Attachments
+            // --- [إدارة سجل المحادثة] ---
+            // --- [إدارة سجل المحادثة] ---
+if (!$conversationId) {
+    // توليد عنوان ذكي بدلاً من أخذ الرسالة كما هي
+    $smartTitle = $this->generateSmartTitle($message);
+
+    $conversation = Conversation::create([
+        'user_id' => auth()->id(),
+        'title' => $smartTitle // استخدام العنوان الذكي
+    ]);
+    $conversationId = $conversation->id;
+} else {
+    // تحديث وقت المحادثة لتظهر في الأعلى
+    Conversation::where('id', $conversationId)->update(['updated_at' => now()]);
+}
+
+            // حفظ رسالة المستخدم
+            ChatMessage::create([
+                'conversation_id' => $conversationId,
+                'role' => 'user',
+                'content' => $message
+            ]);
+
+            // --- [منطق الذكاء الاصطناعي] ---
+            
+            // 1. حالة وجود مرفق (صورة/ملف)
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
                 $imageData = base64_encode(file_get_contents($file->getRealPath()));
@@ -33,7 +107,7 @@ class ChatController extends Controller
                 $reply = $this->gemini->askGeminiWithImage($message, $imageData, $mimeType);
             } 
             
-            // 2. Academic Context Case
+            // 2. حالة السياق الأكاديمي (محاضرة)
             else if ($lectureId) {
                 $currentLecture = Lecture::find($lectureId);
 
@@ -48,6 +122,7 @@ class ChatController extends Controller
                 } else {
                     $lectureTexts = LectureFile::where('lecture_id', $lectureId)
                                     ->whereNotNull('extracted_text')
+                                    ->where('extracted_text', '!=', 'لم تبدأ عملية الاستخراج بعد')
                                     ->pluck('extracted_text')
                                     ->implode("\n\n---\n\n");
                 }
@@ -67,13 +142,24 @@ class ChatController extends Controller
                 }
             } 
             
-            // 3. General Chat Case
+            // 3. الدردشة العامة
             else {
                 $reply = $this->gemini->askGemini($message);
             }
 
-            // التأكد أن الرد نصي قبل الإرسال لـ JSON
-            return response()->json(['reply' => is_string($reply) ? $reply : 'No response from AI.']);
+            // --- [حفظ رد الذكاء الاصطناعي] ---
+            $finalReply = is_string($reply) ? $reply : 'No response from AI.';
+            
+            ChatMessage::create([
+                'conversation_id' => $conversationId,
+                'role' => 'assistant',
+                'content' => $finalReply
+            ]);
+
+            return response()->json([
+                'reply' => $finalReply,
+                'conversation_id' => $conversationId
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Chat Error: ' . $e->getMessage());

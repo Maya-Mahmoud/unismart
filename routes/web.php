@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ChatController;
 use App\Http\Controllers\QuizController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Admin\AIController;
 
 Route::middleware([AdminOrProfessorMiddleware::class])->prefix('admin/api')->group(function () {
     Route::get('lectures-by-date', [LectureController::class, 'lecturesByDate']);
@@ -192,6 +193,22 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/scan/file/{id}', [StudentDashboardController::class, 'handleFileScan'])->name('file.scan.handle');
 Route::get('/quiz/play/{id}', [StudentDashboardController::class, 'playQuiz'])->name('student.quiz.play');
 Route::post('/quiz/save-result', [QuizController::class, 'saveResult'])->name('quiz.save');
+Route::middleware(['auth'])->group(function () {
+    
+    // مسارات Veloria AI المشتركة
+    Route::prefix('ai')->group(function () {
+        
+        // 1. جلب قائمة المحادثات (للسجل الجانبي Recent Chats)
+        Route::get('/conversations', [ChatController::class, 'getConversations'])->name('ai.conversations');
+        
+        // 2. جلب رسائل محادثة معينة عند الضغط عليها
+        Route::get('/conversations/{id}/messages', [ChatController::class, 'getMessages'])->name('ai.messages');
+        
+        // 3. إرسال رسالة جديدة (الشات) - تأكدي أن الاسم handleChat يطابق الدالة في الكنترولر
+        Route::post('/chat', [ChatController::class, 'handleChat'])->name('ai.chat');
+        
+    });
+});
 // Notification routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
