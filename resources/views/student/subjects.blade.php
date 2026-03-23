@@ -3,34 +3,38 @@
 @section('title', 'My Library')
 
 @section('content')
-<div class="py-6 max-w-7xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white shadow-sm rounded-lg p-6">
+
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8"></div>
+    <!-- Page Header -->
+
+    <div class="section-header">
+            <h1 class="section-title">Courses</h1>
+            <p class="section-subtitle">Explore your subjects and access recorded lectures and materials (Year: {{ $displayYear }} - Semester: {{ $displaySemester }})</p>
+        </div>
         
         {{-- 1. Search Form --}}
-        <form method="GET" action="{{ route('student.subjects') }}" class="flex space-x-4 mb-6">
+        <form method="GET" action="{{ route('student.subjects') }}" class="flex flex-wrap items-end gap-4">
             <div>
-                <label for="year" class="block text-sm font-medium text-gray-700">Year</label>
-                <select id="year" name="year" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <label for="year" class="block text-sm font-medium  mb-1">Year</label>
+                <select id="year" name="year" class="w-full px-2 py-2 border  rounded-lg  hall-card appearance-auto " >
                     @foreach(['First', 'Second', 'Third', 'Fourth', 'Fifth'] as $y)
                         <option value="{{ $y }}" {{ $displayYear === $y ? 'selected' : '' }}>{{ $y }}</option>
                     @endforeach
                 </select>
             </div>
             <div>
-                <label for="semester" class="block text-sm font-medium text-gray-700">Semester</label>
-                <select id="semester" name="semester" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <label for="semester" class="block text-sm font-medium  mb-1">Semester</label>
+                <select id="semester" name="semester" class="w-full px-2 py-2 border  rounded-lg  hall-card appearance-auto">
                     @foreach(['First', 'Second'] as $s)
                         <option value="{{ $s }}" {{ $displaySemester === $s ? 'selected' : '' }}>{{ $s }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="flex items-end space-x-2">
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                    Search
-                </button>
-                <a href="{{ route('student.subjects') }}" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Clear
-                </a>
+            <div class="flex gap-2">
+                            <button type="submit" class="bg-gradient-to-r from-purple-700 to-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center" style="transition-duration: 0.2s;">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" class="mr-2"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V8h14v12zM7 10h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>Search
+                            </button>
+                
             </div>
         </form>
 
@@ -115,9 +119,7 @@
 
         @elseif(isset($subjects))
             {{-- قائمة المواد الافتراضية --}}
-            <h2 class="text-2xl font-bold mb-6 text-gray-900">My Library</h2>
-            <p class="text-gray-600 mb-8">Click a subject to view available lectures (Year: {{ $displayYear }} - Semester: {{ $displaySemester }})</p>
-
+            
             @if($subjects->isEmpty())
                 <div class="text-center py-12">
                     <h3 class="text-lg font-medium text-gray-900">No subjects found</h3>
