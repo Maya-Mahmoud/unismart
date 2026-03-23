@@ -70,6 +70,8 @@ class StudentDashboardController extends Controller
         $subjects = Subject::where('department', $department)
             ->where('year', $year)
             ->where('semester', $semester)
+            ->with(['lectures'])
+            ->withCount('allFiles')
             ->get();
 
         return view('student.subjects', compact('subjects', 'displayYear', 'displaySemester'));

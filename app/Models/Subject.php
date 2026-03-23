@@ -26,4 +26,9 @@ class Subject extends Model
     {
         return $this->hasMany(Lecture::class);
     }
+    
+public function allFiles()
+{
+    return $this->hasManyThrough(LectureFile::class, Lecture::class);
+}
 }
