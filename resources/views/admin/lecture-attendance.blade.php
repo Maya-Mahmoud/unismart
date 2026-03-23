@@ -399,7 +399,7 @@
                 conversations.forEach(conv => {
                     container.insertAdjacentHTML('beforeend', `
                         <button onclick="loadChatHistory(${conv.id})" class="w-full text-left px-3 py-2 rounded-lg text-[14px] bg-white/5 hover:bg-white/10 transition truncate border border-white/5 text-purple-100">
-                           🔑  ${conv.title || 'Chat session'}
+                          🏷️  ${conv.title || 'Chat session'}
                         </button>
                     `);
                 });
