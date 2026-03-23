@@ -1,18 +1,15 @@
 <x-admin-layout>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 pb-12">
-        <div class="flex flex-col">
+        <div class="flex flex-col ">
             <a href="{{ route('admin.lectures') }}" class="text-base text-purple-600 text-lg hover:text-purple-700 mb-2">
                 ← Back to Lectures
             </a>
-            <br>
-
-            <div class="flex justify-between items-center">
+           
+            <div class="flex justify-between items-center mb-4">
                 <div>
                     <h1 class="text-4xl font-bold text-gray-900"> {{ $lecture->title }}</h1>
                 </div>
-
                 <button id="exportCsvBtn"
                     class="flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-green-700 transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
                     <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-y-1"
@@ -24,10 +21,10 @@
                 </button>
             </div>
         </div>
-        <br>
+        
 
-        {{-- Lecture Info Card --}}
-        <div class="bg-white p-8 border border-green-100 rounded-xl shadow-md hall-card">
+        {{-- Lecture Info Card (Top Banner) --}}
+        <div class="bg-white p-7 border border-green-100 rounded-xl shadow-md hall-card mb-4 ">
             <div class="flex flex-wrap justify-between items-start gap-y-4">
                 {{-- Date Section --}}
                 <div class="flex items-start min-w-1/4">
@@ -45,7 +42,6 @@
                         </p>
                     </div>
                 </div>
-
                 {{-- Time Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-blue-500">
@@ -67,7 +63,6 @@
                       </p>
                     </div>
                 </div>
-
                 {{-- Location Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-green-500">
@@ -85,7 +80,6 @@
                         </p>
                     </div>
                 </div>
-
                 {{-- Professor Section --}}
                 <div class="flex items-start min-w-1/4">
                     <div class="mr-3 text-red-500">
@@ -102,139 +96,154 @@
                         </p>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                {{-- Total Students --}}
-                <div class="flex items-start min-w-1/4">
-                    <div class="mr-3 text-green-500">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-base font-medium text-black-700">Total Students</p>
-                        <p class="text-2xl font-bold text-gray-900">{{ $totalStudents }}</p>
-                    </div>
+        {{-- Main Layout Grid: Statistics (Left) & Veloria AI (Right) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            
+           {{-- Attendance Statistics Column (Side Column) --}}
+<div class="lg:col-span-2 space-y-14">
+    <h3 class="text-lg text-center font-bold text-purple-600 mb-3 px-1">Lecture Stats 👇🏻</h3>
+    
+    {{-- Grid for Small Cards --}}
+    <div class="grid grid-cols-2 lg:grid-cols-1 gap-4 text-center">
+        
+        {{-- Total Students Card --}}
+        <div class="bg-white p-4 border border-gray-100 rounded-2xl shadow-sm hall-card">
+            <div class="flex flex-col">
+                <p class="text-[14px] font-bold text-black-500 uppercase tracking-wider">Total Students</p>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-xl font-black text-gray-900">{{ $totalStudents }}</p>
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
                 </div>
             </div>
         </div>
 
-        {{-- Attendance Statistics Card --}}
-        <div class="bg-white p-6 border border-gray-100 rounded-xl shadow-md mt-6 hall-card">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Attendance Statistics</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-green-100 p-4 rounded-lg border border-green-500/30">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-base font-medium text-green-600">Present</h4>
-                            <p class="text-2xl font-bold text-green-900">{{ $presentCount }}</p>
-                        </div>
-                        <div class="text-green-500">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-rose-100 p-4 rounded-lg border border-rose-500/30">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-base font-medium text-rose-600">Absent</h4>
-                            <p class="text-2xl font-bold text-rose-900">{{ $absentCount }}</p>
-                        </div>
-                        <div class="text-red-500">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-blue-100 p-4 rounded-lg border border-blue-500/30">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h4 class="text-base font-medium text-blue-600">Attendance Rate</h4>
-                            <p class="text-2xl font-bold text-blue-900">{{ $totalStudents > 0 ? round(($presentCount / $totalStudents) * 100, 1) : 0 }}%</p>
-                        </div>
-                        <div class="text-blue-500">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                        </div>
-                    </div>
+        {{-- Present Card --}}
+        <div class="bg-green-50 p-4 border border-green-100 rounded-2xl shadow-sm hall-card">
+            <div class="flex flex-col">
+                <h4 class="text-[14px] font-bold text-green-600 uppercase tracking-wider">Present</h4>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-xl font-black text-green-900">{{ $presentCount }}</p>
+                    <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
                 </div>
             </div>
         </div>
 
-        {{-- Gemini Assistant Chat Card (Veloria AI) --}}
-        <div class="mt-8 bg-white rounded-3xl shadow-xl overflow-hidden border border-purple-100 flex flex-col md:flex-row h-[550px]">
-            <div class="w-full md:w-80 bg-gradient-to-br from-purple-700 via-indigo-800 to-indigo-950 p-8 text-white flex flex-col justify-between relative">
-                <div class="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
-
-                <div class="relative z-10">
-                    <div class="inline-flex p-3 bg-white/10 rounded-2xl backdrop-blur-md mb-6 border border-white/20">
-                        <svg class="w-8 h-8 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold mb-2 tracking-tight">VELORIA AI</h3>
-                    <p class="text-purple-200/80 text-sm mb-8 leading-relaxed font-light">Intelligent Academic Assistant</p>
-                    
-                    <div class="space-y-3">
-                        <p class="text-[10px] uppercase tracking-widest font-bold text-purple-300/60">Tools</p>
-                        <button onclick="openQuizModal()" class="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all group text-sm border border-white/5">
-                            <span>💡 Generate Quiz</span>
-                            <svg class="w-4 h-4 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-
-                        <hr class="border-white/10 my-4">
-
-                        {{-- سجل المحادثات --}}
-                        <p class="text-[10px] uppercase tracking-widest font-bold text-purple-300/60 flex justify-between items-center">
-                            <span>Recent Chats</span>
-                            <button onclick="createNewChat()" class="hover:text-white p-1" title="New Chat">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            </button>
-                        </p>
-                        <div id="conversationsList" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                            <p class="text-[10px] text-purple-400/50 italic">Loading chats...</p>
-                        </div>
-                    </div>
+        {{-- Absent Card --}}
+        <div class="bg-rose-50 p-4 border border-rose-100 rounded-2xl shadow-sm hall-card">
+            <div class="flex flex-col">
+                <h4 class="text-[14px] font-bold text-rose-600 uppercase tracking-wider">Absent</h4>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-xl font-black text-rose-900">{{ $absentCount }}</p>
+                    <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </div>
-                <p class="text-[10px] text-purple-400/50 italic">Powered by Google Gemini</p>
             </div>
+        </div>
 
-            {{-- Chat Area --}}
-            <div class="flex-1 flex flex-col bg-gray-50/50">
-                <div class="px-6 py-3 bg-white/80 backdrop-blur-sm border-b border-gray-100 flex items-center justify-between">
-                    <span class="flex items-center text-xs font-semibold text-green-500 uppercase tracking-widest">
-                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span> System Online
-                    </span>
+        {{-- Attendance Rate Card --}}
+        <div class="bg-blue-50 p-4 border border-blue-100 rounded-2xl shadow-sm hall-card">
+            <div class="flex flex-col">
+                <h4 class="text-[14px] font-bold text-blue-600 uppercase tracking-wider">Att. Rate</h4>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-xl font-black text-blue-900">{{ $totalStudents > 0 ? round(($presentCount / $totalStudents) * 100, 1) : 0 }}%</p>
+                   <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
                 </div>
+            </div>
+        </div>
 
-                <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                    <div class="flex justify-start items-start">
-                        <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        {{-- Absent Rate Card (الجديد) --}}
+        <div class="bg-amber-50 p-4 border border-amber-100 rounded-2xl shadow-sm hall-card">
+            <div class="flex flex-col">
+                <h4 class="text-[14px] font-bold text-amber-600 uppercase tracking-wider">Abs. Rate</h4>
+                <div class="flex items-center justify-between mt-1">
+                    <p class="text-xl font-black text-amber-900">{{ $totalStudents > 0 ? round(($absentCount / $totalStudents) * 100, 1) : 0 }}%</p>
+                    <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+            {{-- Veloria AI Column (Main Content) --}}
+            <div class="lg:col-span-10">
+                <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-purple-100 flex flex-col md:flex-row h-[740px]">
+                    {{-- Sidebar Veloria --}}
+                    <div class="w-full md:w-72 bg-gradient-to-br from-purple-700 via-indigo-800 to-indigo-950 p-6 text-white flex flex-col justify-between relative">
+                        <div class="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+                        <div class="relative z-10">
+                            <div class="inline-flex p-3 bg-white/10 rounded-2xl backdrop-blur-md mb-6 border border-white/20">
+                                <svg class="w-8 h-8 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-1 tracking-tight">VELORIA AI</h3>
+                            <p class="text-purple-200/80 text-xs mb-8 leading-relaxed font-light">Intelligent Academic Assistant</p>
+                            
+                            <div class="space-y-3">
+                                <p class="text-[10px] uppercase tracking-widest font-bold text-purple-300/60">Tools</p>
+                                <button onclick="openQuizModal()" class="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all group text-sm border border-white/5">
+                                    <span >💡 Generate Quiz</span>
+                                    <svg class="w-4 h-4 group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <hr class="border-white/10 my-4">
+                                <p class="text-[12px] uppercase tracking-widest font-bold text-purple-300/60 flex justify-between items-center">
+                                    <span>Recent Chats</span>
+                                    <button onclick="createNewChat()" class="hover:text-white p-2" title="New Chat">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    </button>
+                                </p>
+                                <div id="conversationsList" class="space-y-2 max-h-70 overflow-y-auto custom-scrollbar pr-1">
+                                    <p class="text-[12px] text-purple-400/50 italic">Loading chats...</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-none shadow-sm text-gray-700 max-w-[85%] text-sm">
-                            Hello {{Auth::user()->name}}! 👋  How can I help?
-                        </div>
+                        <p class="text-[12px] text-purple-400/50 italic">Powered by Google Gemini</p>
                     </div>
-                </div>
 
-                {{-- Input Area --}}
+                    {{-- Chat Area --}}
+                    <div class="flex-1 flex flex-col bg-gray-50/50">
+                        <div class="px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between">
+                            <span class="flex items-center text-base text-xs font-semibold text-green-600 uppercase tracking-widest">
+                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span> System Online
+                            </span>
+                        </div>
+
+                        <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                            <div class="flex justify-start items-start">
+                                <div class="flex-shrink-0 w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center mr-3 text-purple-600 border border-purple-200 shadow-sm">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                </div>
+                                <div class="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-none shadow-sm text-gray-700 max-w-[85%] text-m leading-relaxed">
+                                    Hello {{Auth::user()->name}}! 👋  How can I help you today?
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Input Area --}}
                 <div class="p-6 bg-white border-t border-gray-100">
-                    <div id="filePreview" class="mb-2 px-3 py-2 bg-purple-50 text-purple-700 text-xs rounded-xl hidden flex items-center justify-between border border-purple-100 shadow-sm">
+                    <div id="filePreview" class="mb-2 px-3 py-2 bg-purple-50 text-purple-700 text-m rounded-xl hidden flex items-center justify-between border border-purple-100 shadow-sm">
                         <span id="fileNameDisplay" class="truncate font-medium"></span>
                         <button onclick="clearFile()" class="text-rose-500 font-bold hover:bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">×</button>
                     </div>
                     <div class="relative flex items-center gap-3">
                         <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(this)">
                         <button type="button" onclick="document.getElementById('fileInput').click()" class="h-12 w-12 bg-gray-100 rounded-2xl flex items-center justify-center border border-gray-200 hover:bg-gray-200 transition">
-                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                         </button>
-                        <input type="text" id="userInput" placeholder="Ask Veloria..." class="flex-1 bg-gray-100 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-purple-500 transition-all text-base font-medium">
+                        <input type="text" id="userInput" placeholder="Ask Veloria..." class="flex-1 bg-black-150 border-none rounded-2xl py-4 px-6 focus:ring-2 focus:ring-purple-500 transition-all text-base font-medium">
                         <button id="sendMessageBtn" class="h-12 w-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 transition shadow-lg flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                         </button>
@@ -389,8 +398,8 @@
 
                 conversations.forEach(conv => {
                     container.insertAdjacentHTML('beforeend', `
-                        <button onclick="loadChatHistory(${conv.id})" class="w-full text-left px-3 py-2 rounded-lg text-[11px] bg-white/5 hover:bg-white/10 transition truncate border border-white/5 text-purple-100">
-                            💬 ${conv.title || 'Chat session'}
+                        <button onclick="loadChatHistory(${conv.id})" class="w-full text-left px-3 py-2 rounded-lg text-[14px] bg-white/5 hover:bg-white/10 transition truncate border border-white/5 text-purple-100">
+                           🔑  ${conv.title || 'Chat session'}
                         </button>
                     `);
                 });
