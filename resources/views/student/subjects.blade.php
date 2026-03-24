@@ -117,7 +117,7 @@
                 <p class="text-gray-500 text-lg">Adjust filters to see available subjects</p>
             </div>
         @else
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-3 gap-6">
                 @foreach($subjects as $subject)
                     @php
                         $hasFiles = \App\Models\LectureFile::whereHas('lecture.subject', fn($q) => $q->where('id', $subject->id))->exists();
