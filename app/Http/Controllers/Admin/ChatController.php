@@ -22,20 +22,20 @@ class ChatController extends Controller
     }
 
     /**
-     * جلب قائمة المحادثات الخاصة بالمستخدم الحالي (للسجل الجانبي)
+     * جلب قائمة المحادثات الخاصة بالمستخدم الحالي
      */
     public function getConversations()
     {
         $conversations = Conversation::where('user_id', auth()->id())
             ->orderBy('updated_at', 'desc')
-            ->take(15) // جلب آخر 15 محادثة
+            ->take(15)
             ->get(['id', 'title', 'updated_at']);
 
         return response()->json($conversations);
     }
 
     /**
-     * جلب رسائل محادثة معينة عند الضغط عليها من السجل
+     * جلب رسائل محادثة معينة
      */
     public function getMessages($id)
     {
@@ -49,19 +49,31 @@ class ChatController extends Controller
 
         return response()->json($messages);
     }
-    private function generateSmartTitle($firstMessage)
-{
-    try {
-        $prompt = "Generate a very short, professional title (max 4 words) in the same language for this message: '$firstMessage'. Return ONLY the title text.";
-        $smartTitle = $this->gemini->askGemini($prompt);
-        
-        // تنظيف النص الناتج من أي علامات تنصيص أو مسافات زائدة
-        return trim(str_replace(['"', "'", '*', '-'], '', $smartTitle));
-    } catch (\Exception $e) {
-        // في حال فشل الذكاء الاصطناعي، نعود للطريقة التقليدية كخيار احتياطي
-        return Str::limit($firstMessage, 40);
+
+    /**
+     * التعديل المطلوب للسرعة: توليد عنوان سريع بدلاً من استخدام الـ API
+     */
+    private function generateFastTitle($firstMessage)
+    {
+        return Str::limit($firstMessage, 30);
     }
-}
+    /**
+     * توليد عنوان ذكي للمحادثة باستخدام الذكاء الاصطناعي
+     */
+    private function generateSmartTitle($firstMessage)
+    {
+        try {
+            // نرسل طلباً صغيراً جداً ومستقلاً فقط لتوليد العنوان
+            $prompt = "Generate a very short title (max 3 words) in the same language for this message: '$firstMessage'. Return ONLY the title text.";
+            $smartTitle = $this->gemini->askGemini($prompt);
+            
+            // تنظيف النص من أي علامات ترقيم زائدة
+            return trim(str_replace(['"', "'", '*', '-', '.'], '', $smartTitle));
+        } catch (\Exception $e) {
+            // في حال فشل الذكاء الاصطناعي نعود للقص التلقائي كخطة بديلة
+            return Str::limit($firstMessage, 30);
+        }
+    }
 
     /**
      * معالجة إرسال الرسائل (الشات الأساسي)
@@ -75,22 +87,19 @@ class ChatController extends Controller
             $reply = "";
 
             // --- [إدارة سجل المحادثة] ---
-            // --- [إدارة سجل المحادثة] ---
-if (!$conversationId) {
-    // توليد عنوان ذكي بدلاً من أخذ الرسالة كما هي
-    $smartTitle = $this->generateSmartTitle($message);
+            if (!$conversationId) {
+                $title = $this->generateSmartTitle($message);
 
-    $conversation = Conversation::create([
-        'user_id' => auth()->id(),
-        'title' => $smartTitle // استخدام العنوان الذكي
-    ]);
-    $conversationId = $conversation->id;
-} else {
-    // تحديث وقت المحادثة لتظهر في الأعلى
-    Conversation::where('id', $conversationId)->update(['updated_at' => now()]);
-}
+                $conversation = Conversation::create([
+                    'user_id' => auth()->id(),
+                    'title' => $title 
+                ]);
+                $conversationId = $conversation->id; 
+            
+            } else {
+                Conversation::where('id', $conversationId)->update(['updated_at' => now()]);
+            }
 
-            // حفظ رسالة المستخدم
             ChatMessage::create([
                 'conversation_id' => $conversationId,
                 'role' => 'user',
@@ -99,7 +108,7 @@ if (!$conversationId) {
 
             // --- [منطق الذكاء الاصطناعي] ---
             
-            // 1. حالة وجود مرفق (صورة/ملف)
+            // 1. حالة وجود مرفق
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
                 $imageData = base64_encode(file_get_contents($file->getRealPath()));
@@ -107,7 +116,7 @@ if (!$conversationId) {
                 $reply = $this->gemini->askGeminiWithImage($message, $imageData, $mimeType);
             } 
             
-            // 2. حالة السياق الأكاديمي (محاضرة)
+            // 2. حالة السياق الأكاديمي (هنا تم التعديل لحل مشكلة الـ Request too large)
             else if ($lectureId) {
                 $currentLecture = Lecture::find($lectureId);
 
@@ -128,12 +137,20 @@ if (!$conversationId) {
                 }
 
                 if (!empty($lectureTexts)) {
-                    $systemInstruction = "You are 'Veloria AI', the professional Academic Assistant for the UniSmart platform. 
-                    Your core purpose is to assist based on these materials: \n\n" . $lectureTexts . " \n\n
-                    STRICT OPERATIONAL RULES:
-                    1. LANGUAGE: Always respond in the language used by the student.
-                    2. INTERACTIVE QUIZ REQUESTS: Return ONLY raw JSON array [{\"question\":\"...\",...}]. No markdown.
-                    3. GENERAL QUESTIONS: Respond with normal text.";
+                    // التعديل: قص نصوص المحاضرات لضمان عدم تجاوز الـ 6000 توكن
+                    $clippedLectureTexts = Str::limit($lectureTexts, 4000, '...'); 
+
+                   $systemInstruction = "You are 'Veloria AI', the professional and friendly Academic Assistant for the UniSmart platform.
+Your core purpose is to assist based on these materials: \n\n" . $clippedLectureTexts . " \n\n
+PERSONALITY & TONE:
+- Be helpful, supportive, and natural in your conversation.
+- If the user greets you or asks how you are, respond with a friendly and positive tone in Arabic (Levantine/Syrian touch is welcomed).
+- Avoid robotic or overly formal 'machine-translated' phrases.
+
+STRICT OPERATIONAL RULES:
+1. LANGUAGE: Always respond in the language used by the student.
+2. INTERACTIVE QUIZ REQUESTS: Return ONLY raw JSON array [{\"question\":\"...\",...}]. No markdown.
+3. GENERAL QUESTIONS: Respond with normal text.";
 
                     $userPrompt = "\n\nStudent Query: " . $message . "\n\nResponse:";
                     $reply = $this->gemini->askGemini($systemInstruction . $userPrompt);
@@ -147,7 +164,6 @@ if (!$conversationId) {
                 $reply = $this->gemini->askGemini($message);
             }
 
-            // --- [حفظ رد الذكاء الاصطناعي] ---
             $finalReply = is_string($reply) ? $reply : 'No response from AI.';
             
             ChatMessage::create([

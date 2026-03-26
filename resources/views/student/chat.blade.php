@@ -1,207 +1,277 @@
 @extends('layouts.student-app')
 
-@section('title', 'مساعد الطالب الذكي')
+@section('title', 'Veloria AI Assistant')
 
 @section('content')
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-    <div class="p-6 bg-white border-b border-gray-200">
-        <div class="flex items-center">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-            </svg>
-            <h1 class="ml-2 text-2xl font-medium text-gray-900">مساعد الطالب الذكي</h1>
-        </div>
-        <p class="mt-2 text-sm text-gray-600">يمكنك السؤال عن المحاضرات، القاعات، والإجراءات الجامعية</p>
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8 py-12">
+    <div class="section-header mb-8">
+        <h1 class="section-title text-3xl font-bold">Veloria AI Assistant</h1>
+        <p class="section-subtitle">Your intelligent academic companion for lectures, halls, and more</p>
     </div>
 
-    <div class="bg-gray-50 px-6 py-4">
-        <!-- Chat Messages Container -->
-        <div id="chat-messages" class="space-y-4 mb-4 max-h-96 overflow-y-auto bg-white rounded-lg border border-gray-200 p-4">
-            <!-- Welcome Message -->
-            <div class="flex items-start space-x-3 rtl:space-x-reverse">
-                <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-200 flex flex-col lg:flex-row h-[70vh] max-h-[800px]">
+        
+        <div class="w-full lg:w-80 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700 p-6 text-white flex flex-col">
+            <div class="flex items-center mb-6">
+                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mr-4 backdrop-blur-sm">
+                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold">Veloria AI</h3>
+                    <p class="text-blue-100 text-sm">Academic Assistant</p>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-0 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-bold uppercase tracking-wide text-blue-200">Recent Chats</span>
+                    <button class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg transition" onclick="newChat()" title="New Chat">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="chatHistory" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                    <div class="text-xs text-blue-300 italic">Loading history...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-white">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mr-3 text-purple-600">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
                     </div>
-                </div>
-                <div class="flex-1 bg-blue-50 rounded-lg p-3">
-                    <p class="text-sm text-gray-800">مرحباً! أنا مساعدك الجامعي. يمكنك السؤال عن:</p>
-                    <ul class="text-sm text-gray-600 mt-2 space-y-1">
-                        <li>• مواعيد المحاضرات والمواد</li>
-                        <li>• أماكن القاعات والمباني</li>
-                        <li>• الإجراءات الجامعية والتسجيل</li>
-                    </ul>
+                    <div>
+                        <span class="font-bold text-gray-800 block">Veloria AI</span>
+                        <span class="text-[10px] text-green-500 flex items-center">
+                            <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span> Active Now
+                        </span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Message Input -->
-        <div class="flex space-x-3 rtl:space-x-reverse">
-            <div class="flex-1">
-                <input type="text"
-                       id="message-input"
-                       placeholder="اكتب سؤالك هنا..."
-                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-                       maxlength="500">
-            </div>
-            <button onclick="sendMessage()"
-                    id="send-button"
-                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                </svg>
-                <span class="sr-only">إرسال</span>
-            </button>
-        </div>
-
-        <!-- Typing Indicator -->
-        <div id="typing-indicator" class="hidden mt-3 text-sm text-gray-500">
-            <div class="flex items-center space-x-2 rtl:space-x-reverse">
-                <div class="flex space-x-1">
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            <div id="messages" class="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 flex-shrink-0 mt-1">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-2xl p-4 max-w-lg shadow-sm">
+                        <p class="text-gray-800 text-sm">Hello!👋  I'm Veloria. How can I assist you with your university tasks today?</p>
+                    </div>
                 </div>
-                <span>يكتب...</span>
+            </div>
+
+            <div class="p-6 border-t border-gray-100 bg-white">
+                <div class="flex items-end space-x-3">
+                    <input type="text" id="messageInput" placeholder="Type your academic question..." 
+                           class="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition text-sm">
+                    <button onclick="sendMessage()" id="sendBtn" 
+                            class="w-12 h-12 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 flex items-center justify-center shadow-lg transition active:scale-95">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-let isTyping = false;
+let currentConversationId = null;
 
-function addMessage(content, isUser = false) {
-    const messagesContainer = document.getElementById('chat-messages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `flex items-start space-x-3 rtl:space-x-reverse ${isUser ? 'justify-end' : ''}`;
+// تحميل سجل المحادثات فور فتح الصفحة
+document.addEventListener('DOMContentLoaded', loadConversations);
 
-    if (isUser) {
-        messageDiv.innerHTML = `
-            <div class="flex-1 max-w-xs lg:max-w-md">
-                <div class="bg-blue-600 text-white rounded-lg p-3">
-                    <p class="text-sm">${content}</p>
-                </div>
-                <p class="text-xs text-gray-500 mt-1 text-right">أنت</p>
-            </div>
-            <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                    </svg>
-                </div>
-            </div>
-        `;
-    } else {
-        messageDiv.innerHTML = `
-            <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                    </svg>
-                </div>
-            </div>
-            <div class="flex-1 max-w-xs lg:max-w-2xl">
-                <div class="bg-gray-100 rounded-lg p-3">
-                    <p class="text-sm text-gray-800 whitespace-pre-line">${content.replace(/https?:\/\/[^\s]+/g, '<a href="$&" target="_blank" class="text-blue-600 underline">$&</a>')}</p>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">مساعد الطالب</p>
-            </div>
-        `;
-    }
+function loadConversations() {
+    fetch("{{ route('student.chat.conversations') }}")
+        .then(res => res.json())
+        .then(data => {
+            const historyContainer = document.getElementById('chatHistory');
+            historyContainer.innerHTML = '';
+            
+            if (data.length === 0) {
+                historyContainer.innerHTML = '<div class="text-xs text-blue-300 italic opacity-70 p-2">No recent sessions.</div>';
+                return;
+            }
 
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function showTypingIndicator() {
-    if (isTyping) return;
-    isTyping = true;
-    document.getElementById('typing-indicator').classList.remove('hidden');
-}
-
-function hideTypingIndicator() {
-    if (!isTyping) return;
-    isTyping = false;
-    document.getElementById('typing-indicator').classList.add('hidden');
-}
-
-async function sendMessage() {
-    const input = document.getElementById('message-input');
-    const button = document.getElementById('send-button');
-    const message = input.value.trim();
-
-    if (message === '') return;
-
-    // Disable input and button
-    input.disabled = true;
-    button.disabled = true;
-
-    // Add user message
-    addMessage(message, true);
-
-    // Clear input
-    input.value = '';
-
-    // Show typing indicator
-    showTypingIndicator();
-
-    try {
-        // Get CSRF token
-        const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-        // Send to server
-        const response = await fetch('{{ route("student.chat") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrf,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ message })
+            data.forEach(conv => {
+                const item = document.createElement('div');
+                // تنسيق العنصر في السجل
+                item.className = "p-3 mb-2 rounded-xl bg-white/5 hover:bg-white/20 cursor-pointer transition text-sm border border-transparent hover:border-white/30 truncate flex items-center group";
+                item.innerHTML = `
+                   
+                    <span class="truncate">🏷️ ${conv.title}</span>
+                `;
+                item.onclick = () => loadMessages(conv.id);
+                historyContainer.appendChild(item);
+            });
         });
+}
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+function loadMessages(id) {
+    currentConversationId = id;
+    const container = document.getElementById('messages');
+    container.innerHTML = ''; 
+    showTyping(); // إظهار مؤشر التحميل
+
+    fetch(`/student/chat/messages/${id}`)
+        .then(res => res.json())
+        .then(messages => {
+            hideTyping();
+            if(messages.length === 0) {
+                appendMessage("This conversation is empty.", false);
+            } else {
+                messages.forEach(m => appendMessage(m.content, m.role === 'user'));
+            }
+        });
+}
+
+function newChat() {
+    currentConversationId = null;
+    document.getElementById('messages').innerHTML = `
+        <div class="flex items-start space-x-3 mb-4">
+            <div class="bg-white border border-gray-200 rounded-2xl p-4 max-w-lg shadow-sm">
+                <p class="text-gray-800 text-sm italic opacity-70">New session started. Ask me anything!</p>
+            </div>
+        </div>`;
+    document.getElementById('messageInput').focus();
+}
+
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const btn = document.getElementById('sendBtn');
+    const msg = input.value.trim();
+    
+    if (!msg) return;
+
+    appendMessage(msg, true);
+    input.value = '';
+    input.disabled = true;
+    btn.disabled = true;
+    showTyping();
+
+    // إرسال الطلب مع الـ ID للمحادثة
+    fetch("{{ route('student.student.chat.send') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ 
+            message: msg,
+            conversation_id: currentConversationId 
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideTyping();
+        appendMessage(data.reply, false);
+        
+        // إذا بدأت محادثة جديدة، نحدث السجل فوراً
+        if (!currentConversationId && data.conversation_id) {
+            currentConversationId = data.conversation_id;
+            loadConversations(); 
         }
-
-        const data = await response.json();
-
-        // Hide typing indicator
-        hideTypingIndicator();
-
-        // Add AI response
-        addMessage(data.reply);
-
-    } catch (error) {
-        console.error('Error:', error);
-
-        // Hide typing indicator
-        hideTypingIndicator();
-
-        // Add error message
-        addMessage('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
-    } finally {
-        // Re-enable input and button
+    })
+    .catch(err => {
+        hideTyping();
+        appendMessage('Connection error. Please check your internet.', false);
+    })
+    .finally(() => {
         input.disabled = false;
-        button.disabled = false;
+        btn.disabled = false;
         input.focus();
+    });
+}
+function appendMessage(content, isUser) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`;
+    
+    const bubbleClass = isUser 
+        ? 'bg-purple-600 text-white rounded-t-2xl rounded-bl-2xl px-4 py-3 shadow-md ml-12' 
+        : 'bg-white border border-purple-100 text-gray-800 rounded-t-2xl rounded-br-2xl px-4 py-3 shadow-sm mr-12';
+
+    div.innerHTML = `
+        <div class="flex flex-col ${isUser ? 'items-end' : 'items-start'}">
+            <div class="${bubbleClass} max-w-lg">
+                <p class="text-base leading-relaxed" id="typing-text-${Date.now()}"></p> 
+            </div>
+            <span class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-semibold">
+                ${isUser ? 'You' : 'Veloria AI'}
+            </span>
+        </div>`;
+    
+    container.appendChild(div);
+    const textElement = div.querySelector('p');
+
+    // إذا كان المستخدم هو اللي كاتب، يظهر الحكي فوراً
+    // أما إذا كان Veloria، يظهر كلمة كلمة
+    if (isUser) {
+        textElement.innerText = content;
+    } else {
+        typeWriter(textElement, content);
+    }
+
+    container.scrollTop = container.scrollHeight;
+}
+
+// دالة المحاكاة للكتابة التدريجية
+function typeWriter(element, text, index = 0) {
+    if (index < text.length) {
+        element.innerHTML += text.charAt(index);
+        index++;
+        setTimeout(() => typeWriter(element, text, index), 15); // سرعة الكتابة بالـ ms
+        
+        // لجعل السكرول ينزل تلقائياً مع الكتابة
+        const container = document.getElementById('messages');
+        container.scrollTop = container.scrollHeight;
     }
 }
 
-// Handle Enter key
-document.getElementById('message-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
+function showTyping() {
+    const container = document.getElementById('messages');
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typingBubble';
+    typingDiv.className = 'flex justify-start mb-4';
+    typingDiv.innerHTML = `
+        <div class="flex flex-col items-start">
+            <div class="bg-purple-50 border border-purple-100 rounded-t-2xl rounded-br-2xl px-4 py-3 mr-12">
+                <div class="flex space-x-1">
+                    <div class="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce"></div>
+                    <div class="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style="animation-delay:0.2s"></div>
+                    <div class="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style="animation-delay:0.4s"></div>
+                </div>
+            </div>
+        </div>`;
+    container.appendChild(typingDiv);
+    container.scrollTop = container.scrollHeight;
+}
 
-// Focus on input when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('message-input').focus();
+function hideTyping() {
+    const loader = document.getElementById('typingBubble');
+    if (loader) loader.remove();
+}
+
+// دعم زر Enter
+document.getElementById('messageInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') sendMessage();
 });
 </script>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
 @endsection

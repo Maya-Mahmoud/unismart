@@ -1,127 +1,67 @@
 <?php
 
-
-
 namespace App\Services;
-
-
 
 use Illuminate\Support\Facades\Http;
 
-
-
 class GeminiService
-
 {
-
     protected $apiKey;
-
-    // الرابط الذي يعمل عندك (Flash Latest)
-
-    protected $baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
-
-
+    // الرابط الخاص بـ Groq
+    protected $baseUrl = "https://api.groq.com/openai/v1/chat/completions";
 
     public function __construct()
-
     {
-
+        // تأكدي أن المفتاح في ملف الـ .env يبدأ بـ gsk_
         $this->apiKey = env('GEMINI_API_KEY');
-
     }
 
-
-
     public function askGemini($prompt)
-
     {
-
-        $url = $this->baseUrl . "?key=" . $this->apiKey;
-
-
+        $url = $this->baseUrl;
 
         $payload = [
-
-            'contents' => [
-
+            // تغيير الموديل لموديل "خفيف" وذو حدود واسعة (Rate Limit Friendly)
+            'model' => 'llama-3.1-8b-instant', 
+            'messages' => [
                 [
-
-                    'parts' => [
-
-                        [
-
-                            // وضعنا التعليمات في البداية بأسلوب "أمر نظامي" صارم
-
-                            'text' => "System Instructions: You are Veloria, a university assistant. NEVER start your response with 'I am Veloria' or introduce yourself unless specifically asked. Answer the following question directly and in detail using the user's language: " . $prompt
-
-                        ]
-
-                    ]
-
+                    'role' => 'system',
+                    'content' => "You are Veloria, a university assistant. Answer directly and concisely."
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $prompt
                 ]
-
             ],
-
-            'generationConfig' => [
-
-                'temperature' => 0.7,
-
-                'maxOutputTokens' => 2048, // لضمان عدم تقطيع الإجابات الطويلة
-
-                'topP' => 0.9,
-
-            ]
-
+            'temperature' => 0.7,
+            'max_tokens' => 500, 
         ];
 
-
-
         try {
-
-            // تقليل الـ Timeouts لجعل النظام يستجيب أو يفشل بسرعة بدل الانتظار الطويل
-
-            $response = Http::withOptions([
-
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->withOptions([
                 'verify' => false,
-
-                'connect_timeout' => 10, 
-
-                'timeout' => 45, 
-
+                'connect_timeout' => 5,
+                'timeout' => 20, 
             ])->post($url, $payload);
-
-
 
             $data = $response->json();
 
-
-
             if ($response->failed()) {
-
-                return "خطأ: " . ($data['error']['message'] ?? 'فشل الاتصال');
-
+                // عرض رسالة خطأ واضحة في حال تجاوز الحدود مرة أخرى
+                return "تنبيه من سيرفر Groq: " . ($data['error']['message'] ?? 'فشل الاتصال');
             }
 
-
-
-            if (isset($data['candidates'][0]['content']['parts'][0]['text'])) {
-
-                return $data['candidates'][0]['content']['parts'][0]['text'];
-
+            if (isset($data['choices'][0]['message']['content'])) {
+                return $data['choices'][0]['message']['content'];
             }
-
-
 
             return 'عذراً، لم أستطع تكوين الرد.';
 
-
-
         } catch (\Exception $e) {
-
             return "تأخر الاتصال، يرجى المحاولة مرة أخرى.";
-
         }
-
     }
-
 }

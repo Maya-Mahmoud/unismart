@@ -210,7 +210,7 @@
                                 </div>
                             </div>
                         </div>
-                        <p class="text-[12px] text-purple-400/50 italic">Powered by Google Gemini</p>
+                        <p class="text-[12px] text-purple-400/50 italic">Powered by Google Grok</p>
                     </div>
 
                     {{-- Chat Area --}}

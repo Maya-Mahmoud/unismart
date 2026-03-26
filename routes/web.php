@@ -174,7 +174,9 @@ Route::get('attendance', [StudentDashboardController::class, 'attendance'])->nam
         return view('student.chat');
     })->name('chat.view');
    
-    Route::post('/student/chat/send', [StudentChatController::class, 'sendMessage']);
+Route::post('/student/chat/send', [StudentChatController::class, 'sendMessage'])->name('student.chat.send');
+Route::get('chat/conversations', [StudentChatController::class, 'getConversations'])->name('chat.conversations');
+Route::get('chat/messages/{id}', [StudentChatController::class, 'getMessages'])->name('chat.messages');
 
     // Profile routes
     Route::get('profile', [StudentProfileController::class, 'show'])->name('profile');
