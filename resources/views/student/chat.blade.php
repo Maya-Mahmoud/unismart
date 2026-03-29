@@ -24,7 +24,36 @@
                 </div>
             </div>
 
-            <div class="flex-1 min-h-0 flex flex-col">
+            <div class="mb-6 relative">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-blue-200 mb-2 block">Focus Subject</label>
+                
+                <div id="customSelectTrigger" onclick="toggleDropdown()" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white cursor-pointer flex justify-between items-center hover:bg-white/20 transition backdrop-blur-md">
+                    <span id="selectedSubjectName">General Questions</span>
+                    <svg class="w-4 h-4 transition-transform duration-300" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+
+                <input type="hidden" id="subjectFocus" value="">
+
+                <div id="customDropdownMenu" class="hidden absolute left-0 right-0 mt-2 bg-indigo-900/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in-up">
+                    <div onclick="selectSubject('', 'General Questions')" class="px-4 py-3 text-sm hover:bg-white/10 cursor-pointer transition border-b border-white/5">
+                        General Questions
+                    </div>
+                    @foreach($subjects ?? [] as $subject)
+                        <div onclick="selectSubject('{{ $subject->id }}', '{{ $subject->name }}')" class="px-4 py-3 text-sm hover:bg-white/10 cursor-pointer transition border-b border-white/5 last:border-0">
+                            {{ $subject->name }}
+                        </div>
+                    @endforeach
+                </div>
+
+                <div id="filesContainer" class="mt-4 hidden animate-fade-in">
+                    <label class="text-[10px] font-bold uppercase tracking-widest text-blue-200 mb-2 block">Select Specific Files</label>
+                    <div id="filesList" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar p-3 bg-black/20 rounded-xl border border-white/10"></div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-0 flex flex-col border-t border-white/10 pt-4">
                 <div class="flex justify-between items-center mb-4">
                     <span class="text-xs font-bold uppercase tracking-wide text-blue-200">Recent Chats</span>
                     <button class="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg transition" onclick="newChat()" title="New Chat">
@@ -49,7 +78,7 @@
                     </div>
                     <div>
                         <span class="font-bold text-gray-800 block">Veloria AI</span>
-                        <span class="text-[10px] text-green-500 flex items-center">
+                        <span id="aiStatus" class="text-[10px] text-green-500 flex items-center">
                             <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span> Active Now
                         </span>
                     </div>
@@ -64,7 +93,7 @@
                         </svg>
                     </div>
                     <div class="bg-white border border-gray-200 rounded-2xl p-4 max-w-lg shadow-sm">
-                        <p class="text-gray-800 text-sm">Hello!👋  I'm Veloria. How can I assist you with your university tasks today?</p>
+                        <p class="text-gray-800 text-sm">Hello!👋 I'm Veloria. How can I assist you with your university tasks today?</p>
                     </div>
                 </div>
             </div>
@@ -88,10 +117,125 @@
 <script>
 let currentConversationId = null;
 
-// تحميل سجل المحادثات فور فتح الصفحة
 document.addEventListener('DOMContentLoaded', loadConversations);
 
+// استماع لتغيير الملفات المختارة (التحليل التلقائي)
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'selected_files') {
+        const selectedFiles = Array.from(document.querySelectorAll('input[name="selected_files"]:checked'));
+        if (selectedFiles.length > 0) {
+            analyzeSelectedFiles();
+        }
+    }
+});
+
+function toggleDropdown() {
+    const menu = document.getElementById('customDropdownMenu');
+    const arrow = document.getElementById('dropdownArrow');
+    menu.classList.toggle('hidden');
+    arrow.classList.toggle('rotate-180');
+}
+
+function selectSubject(id, name) {
+    document.getElementById('subjectFocus').value = id;
+    document.getElementById('selectedSubjectName').innerText = name;
+    toggleDropdown();
+    loadSubjectFiles(id);
+}
+
+window.onclick = function(event) {
+    if (!event.target.closest('#customSelectTrigger')) {
+        document.getElementById('customDropdownMenu').classList.add('hidden');
+        document.getElementById('dropdownArrow').classList.remove('rotate-180');
+    }
+}
+
+function analyzeSelectedFiles() {
+    const input = document.getElementById('messageInput');
+    // إرسال أمر للنظام بالإنكليزية
+    const autoMsg = "SYSTEM: Analyze these files in English and extract key points.";
+    input.value = autoMsg;
+    sendMessage(true); // نمرر true لنعرف أنه تحليل تلقائي
+}
+
+function sendMessage(isAuto = false) {
+    const input = document.getElementById('messageInput');
+    const subjectSelect = document.getElementById('subjectFocus');
+    const selectedFiles = Array.from(document.querySelectorAll('input[name="selected_files"]:checked')).map(cb => cb.value);
+    const msg = input.value.trim();
+    
+    if (!msg) return;
+
+    // عرض الرسالة في الواجهة
+    const displayMsg = isAuto ? "Analyzing the selected files..." : msg;
+    appendMessage(displayMsg, true);
+    
+    input.value = '';
+    showTyping();
+
+    fetch("{{ route('student.student.chat.send') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ 
+            message: msg,
+            conversation_id: currentConversationId,
+            subject_id: subjectSelect.value,
+            file_ids: selectedFiles 
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideTyping();
+        appendMessage(data.reply, false);
+        
+        // تحديث الـ ID وتحديث القائمة الجانبية فوراً
+        currentConversationId = data.conversation_id;
+        refreshConversationsList(); 
+    })
+    .catch(err => {
+        hideTyping();
+        console.error("Error:", err);
+    });
+}
+
+function loadSubjectFiles(subjectId) {
+    const container = document.getElementById('filesContainer');
+    const list = document.getElementById('filesList');
+    
+    if (!subjectId) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    list.innerHTML = '<div class="text-[10px] text-blue-200">Loading files...</div>';
+    container.classList.remove('hidden');
+
+    fetch(`/student/subject-files/${subjectId}`)
+        .then(res => res.json())
+        .then(data => {
+            list.innerHTML = '';
+            if (data.length > 0) {
+                data.forEach(file => {
+                    list.innerHTML += `
+                        <label class="flex items-center space-x-2 text-xs text-blue-100 cursor-pointer hover:text-white transition p-1 hover:bg-white/5 rounded">
+                            <input type="checkbox" name="selected_files" value="${file.id}" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 bg-white/20">
+                            <span class="truncate ml-2" title="${file.file_name}">${file.file_name}</span>
+                        </label>`;
+                });
+            } else {
+                list.innerHTML = '<div class="text-[10px] text-red-200">No lectures found</div>';
+            }
+        });
+}
+
 function loadConversations() {
+    refreshConversationsList();
+}
+
+function refreshConversationsList() {
     fetch("{{ route('student.chat.conversations') }}")
         .then(res => res.json())
         .then(data => {
@@ -105,12 +249,9 @@ function loadConversations() {
 
             data.forEach(conv => {
                 const item = document.createElement('div');
-                // تنسيق العنصر في السجل
-                item.className = "p-3 mb-2 rounded-xl bg-white/5 hover:bg-white/20 cursor-pointer transition text-sm border border-transparent hover:border-white/30 truncate flex items-center group";
-                item.innerHTML = `
-                   
-                    <span class="truncate">🏷️ ${conv.title}</span>
-                `;
+                const isActive = currentConversationId == conv.id ? 'bg-white/20 border-white/30' : 'bg-white/5 border-transparent';
+                item.className = `p-3 mb-2 rounded-xl ${isActive} hover:bg-white/20 cursor-pointer transition text-sm border truncate flex items-center group`;
+                item.innerHTML = `<span class="truncate">🏷️ ${conv.title}</span>`;
                 item.onclick = () => loadMessages(conv.id);
                 historyContainer.appendChild(item);
             });
@@ -121,7 +262,8 @@ function loadMessages(id) {
     currentConversationId = id;
     const container = document.getElementById('messages');
     container.innerHTML = ''; 
-    showTyping(); // إظهار مؤشر التحميل
+    showTyping();
+    refreshConversationsList(); // لتحديث الحالة النشطة في السايد بار
 
     fetch(`/student/chat/messages/${id}`)
         .then(res => res.json())
@@ -143,55 +285,10 @@ function newChat() {
                 <p class="text-gray-800 text-sm italic opacity-70">New session started. Ask me anything!</p>
             </div>
         </div>`;
+    refreshConversationsList();
     document.getElementById('messageInput').focus();
 }
 
-function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const btn = document.getElementById('sendBtn');
-    const msg = input.value.trim();
-    
-    if (!msg) return;
-
-    appendMessage(msg, true);
-    input.value = '';
-    input.disabled = true;
-    btn.disabled = true;
-    showTyping();
-
-    // إرسال الطلب مع الـ ID للمحادثة
-    fetch("{{ route('student.student.chat.send') }}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ 
-            message: msg,
-            conversation_id: currentConversationId 
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        hideTyping();
-        appendMessage(data.reply, false);
-        
-        // إذا بدأت محادثة جديدة، نحدث السجل فوراً
-        if (!currentConversationId && data.conversation_id) {
-            currentConversationId = data.conversation_id;
-            loadConversations(); 
-        }
-    })
-    .catch(err => {
-        hideTyping();
-        appendMessage('Connection error. Please check your internet.', false);
-    })
-    .finally(() => {
-        input.disabled = false;
-        btn.disabled = false;
-        input.focus();
-    });
-}
 function appendMessage(content, isUser) {
     const container = document.getElementById('messages');
     const div = document.createElement('div');
@@ -204,7 +301,7 @@ function appendMessage(content, isUser) {
     div.innerHTML = `
         <div class="flex flex-col ${isUser ? 'items-end' : 'items-start'}">
             <div class="${bubbleClass} max-w-lg">
-                <p class="text-base leading-relaxed" id="typing-text-${Date.now()}"></p> 
+                <p class="text-base leading-relaxed"></p> 
             </div>
             <span class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-semibold">
                 ${isUser ? 'You' : 'Veloria AI'}
@@ -214,25 +311,19 @@ function appendMessage(content, isUser) {
     container.appendChild(div);
     const textElement = div.querySelector('p');
 
-    // إذا كان المستخدم هو اللي كاتب، يظهر الحكي فوراً
-    // أما إذا كان Veloria، يظهر كلمة كلمة
     if (isUser) {
         textElement.innerText = content;
     } else {
         typeWriter(textElement, content);
     }
-
     container.scrollTop = container.scrollHeight;
 }
 
-// دالة المحاكاة للكتابة التدريجية
 function typeWriter(element, text, index = 0) {
     if (index < text.length) {
         element.innerHTML += text.charAt(index);
         index++;
-        setTimeout(() => typeWriter(element, text, index), 15); // سرعة الكتابة بالـ ms
-        
-        // لجعل السكرول ينزل تلقائياً مع الكتابة
+        setTimeout(() => typeWriter(element, text, index), 10);
         const container = document.getElementById('messages');
         container.scrollTop = container.scrollHeight;
     }
@@ -262,7 +353,6 @@ function hideTyping() {
     if (loader) loader.remove();
 }
 
-// دعم زر Enter
 document.getElementById('messageInput').addEventListener('keypress', e => {
     if (e.key === 'Enter') sendMessage();
 });
@@ -273,5 +363,11 @@ document.getElementById('messageInput').addEventListener('keypress', e => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
 </style>
 @endsection

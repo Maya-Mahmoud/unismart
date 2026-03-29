@@ -8,6 +8,9 @@ use App\Services\GeminiService;
 use Illuminate\Support\Facades\Log;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Subject;
+use App\Models\LectureFile;
 use Illuminate\Support\Str;
 
 class StudentChatController extends Controller
@@ -17,6 +20,19 @@ class StudentChatController extends Controller
     public function __construct(GeminiService $gemini)
     {
         $this->gemini = $gemini;
+    }
+
+    public function index()
+    {
+        $user = Auth::user();
+        $student = $user->student;
+        
+        $subjects = Subject::where('department_id', $student->department_id)
+            ->where('year', $student->year)
+            ->where('semester', $student->semester)
+            ->get();
+
+        return view('student.chat', compact('student', 'subjects'));
     }
 
     public function getConversations()
@@ -42,16 +58,11 @@ class StudentChatController extends Controller
         return response()->json($messages);
     }
 
-    /**
-     * توليد عنوان ذكي للمحادثة (التعديل الجديد)
-     */
     private function generateSmartTitle($firstMessage)
     {
         try {
-            // طلب عنوان قصير جداً (3 كلمات كحد أقصى)
-            $prompt = "Generate a very short title (max 3 words) in the same language for this message: '$firstMessage'. Return ONLY the title text.";
+            $prompt = "Generate a very short title (max 3 words) for this: '$firstMessage'. Return ONLY the title text.";
             $smartTitle = $this->gemini->askGemini($prompt);
-            
             return trim(str_replace(['"', "'", '*', '-', '.'], '', $smartTitle));
         } catch (\Exception $e) {
             return Str::limit($firstMessage, 30);
@@ -63,50 +74,75 @@ class StudentChatController extends Controller
         try {
             $userMessage = $request->input('message');
             $conversationId = $request->input('conversation_id');
+            $selectedFileIds = $request->input('file_ids', []); 
 
-            if (!$userMessage) {
-                return response()->json(['reply' => 'الرجاء كتابة رسالة.'], 400);
+            $isAutoAnalysis = (!$userMessage && !empty($selectedFileIds));
+
+            if ($isAutoAnalysis) {
+                $userMessage = "SYSTEM_COMMAND: Analyze these files in English.";
             }
 
+            if (!$userMessage) {
+                return response()->json(['reply' => 'Please enter a message.'], 400);
+            }
+
+            $lectureContent = "";
+            $sourceFilesNames = [];
+
+            if (!empty($selectedFileIds)) {
+                $files = LectureFile::whereIn('id', $selectedFileIds)
+                                    ->whereNotNull('extracted_text')
+                                    ->get();
+
+                foreach ($files as $file) {
+                    $lectureContent .= "\n[File: {$file->file_name}]\n" . $file->extracted_text . "\n";
+                    $sourceFilesNames[] = $file->file_name;
+                }
+            }
+
+            // لضبط اللغة
+            $hasArabic = preg_match('/\p{Arabic}/u', $userMessage);
+            $instruction = (!$hasArabic || str_contains($userMessage, 'SYSTEM_COMMAND')) 
+                ? "Respond in ENGLISH ONLY. No Arabic." 
+                : "Respond in Arabic.";
+
+            $limitedContext = Str::limit($lectureContent, 6000);
+            $finalPrompt = "INSTRUCTION: $instruction\n\nCONTEXT: $limitedContext\n\nUSER: $userMessage";
+
+            $reply = $this->gemini->askGemini($finalPrompt);
+
+            // --- تصحيح منطق المحادثة والـ Sidebar ---
             if (!$conversationId) {
-                // استخدام توليد العنوان الذكي بدلاً من القص التلقائي
+                // إذا لم يرسل الـ Frontend آي دي، ننشئ واحدة جديدة
                 $title = $this->generateSmartTitle($userMessage);
                 $conversation = Conversation::create([
                     'user_id' => auth()->id(),
                     'title' => $title
                 ]);
-                $conversationId = $conversation->id; 
+                $conversationId = $conversation->id;
             } else {
-                Conversation::where('id', $conversationId)->update(['updated_at' => now()]);
+                // إذا كانت موجودة، نحدث الوقت لتظهر أول القائمة
+                $existingConv = Conversation::find($conversationId);
+                if ($existingConv) {
+                    $existingConv->touch(); 
+                }
             }
 
-            ChatMessage::create([
-                'conversation_id' => $conversationId,
-                'role' => 'user',
-                'content' => $userMessage
-            ]);
+            $displayMessage = $isAutoAnalysis ? "Analyzing the selected files..." : $userMessage;
 
-            // إضافة تعليمات الشخصية اللطيفة لضمان ردود طبيعية (Veloria Persona)
-            $systemInstruction = "You are 'Veloria AI', the professional and friendly Academic Assistant for the UniSmart platform.
-            PERSONALITY: Be helpful, supportive, and natural. If asked how you are, respond cheerfully in Arabic.
-            RULES: Answer concisely and directly in the language used by the student.";
-            
-            $reply = $this->gemini->askGemini($systemInstruction . "\n\nUser: " . $userMessage);
-
-            ChatMessage::create([
-                'conversation_id' => $conversationId,
-                'role' => 'assistant',
-                'content' => $reply
-            ]);
+            // حفظ الرسائل
+            ChatMessage::create(['conversation_id' => $conversationId, 'role' => 'user', 'content' => $displayMessage]);
+            ChatMessage::create(['conversation_id' => $conversationId, 'role' => 'assistant', 'content' => $reply]);
 
             return response()->json([
                 'reply' => $reply,
-                'conversation_id' => $conversationId
+                'conversation_id' => $conversationId,
+                'source_files' => $sourceFilesNames
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Student Chat Error: ' . $e->getMessage());
-            return response()->json(['reply' => 'عذراً، حدث خطأ: ' . $e->getMessage()], 500);
+            Log::error('Veloria Error: ' . $e->getMessage());
+            return response()->json(['reply' => 'Technical Error: ' . $e->getMessage()], 500);
         }
     }
 }

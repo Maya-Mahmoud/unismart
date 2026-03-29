@@ -6,7 +6,6 @@
 <div class="py-12">
     
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <!-- Page Header -->
         <div class="section-header">
             <h1 class="section-title">My Attendance</h1>
             <p class="section-subtitle">Track your presence records ({{ $displayYear ?? 'All' }} - {{ $displaySemester ?? 'All' }})</p>
@@ -37,11 +36,12 @@
                         $status = $percentage >= 80 ? 'excellent' : ($percentage >= 60 ? 'good' : 'needs_improvement');
                         $statusColor = $percentage >= 80 ? 'green' : ($percentage >= 60 ? 'yellow' : 'red');
                     @endphp
-                    <div class="hall-card group hover:shadow-2xl transition-all duration-300 h-full">
+                    {{-- التعديل الوحيد هنا: إضافة border-gray-200 --}}
+                    <div class="hall-card group hover:shadow-2xl transition-all duration-300 h-full border border-green-800">
                         <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
                             <div>
                                 <h3 class="text-2xl font-bold text-gray-900 group-hover:text-purple-600">{{ $subject }}</h3>
-                                <p class="text-sm text-gray-500">Year {{ $displayYear }} - Semester {{ $displaySemester }}</p>
+                                <p class="text-sm text-gray-800">Year {{ $displayYear }} - Semester {{ $displaySemester }}</p>
                             </div>
                             <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-{{ $statusColor }}-500 to-{{ $statusColor }}-600 text-white shadow-lg">
                                 {{ number_format($percentage, 1) }}%
@@ -49,11 +49,11 @@
                         </div>
                         
                         <div class="space-y-6 mb-8">
-                            <div class="flex items-center justify-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6">
+                            <div class="flex items-center justify-center bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6  border border-green-600">
                                 <div class="flex-1 grid grid-cols-2 gap-8">
                                     <div class="text-center">
                                         <div class="text-4xl font-black text-green-600 mb-1">{{ $counts['present'] }}</div>
-                                        <div class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Present</div>
+                                        <div class="text-sm font-semibold text-gray-700 uppercase tracking-wide ">Present</div>
                                     </div>
                                     <div class="text-center">
                                         <div class="text-4xl font-black text-red-600 mb-1">{{ $counts['absent'] }}</div>
@@ -105,4 +105,3 @@
 </script>
 @endpush
 @endsection
-

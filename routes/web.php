@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController as RegisterController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ProfessorMiddleware;
 use App\Http\Middleware\AdminOrProfessorMiddleware;
@@ -170,14 +171,13 @@ Route::get('attendance', [StudentDashboardController::class, 'attendance'])->nam
     Route::get('subjects/{subject}', [StudentDashboardController::class, 'showSubjectFiles'])->name('subjects.files');
 
     // Chat routes
-    Route::get('chat', function() {
-        return view('student.chat');
-    })->name('chat.view');
+Route::get('chat', [StudentChatController::class, 'index'])->name('student.chat.view');
    
 Route::post('/student/chat/send', [StudentChatController::class, 'sendMessage'])->name('student.chat.send');
+Route::get('chat/files', [StudentDashboardController::class, 'getExplanationFiles'])->name('chat.files');
 Route::get('chat/conversations', [StudentChatController::class, 'getConversations'])->name('chat.conversations');
 Route::get('chat/messages/{id}', [StudentChatController::class, 'getMessages'])->name('chat.messages');
-
+Route::get('/subject-files/{subjectId}', [App\Http\Controllers\StudentDashboardController::class, 'getSubjectFilesJson'])->name('subject.files');
     // Profile routes
     Route::get('profile', [StudentProfileController::class, 'show'])->name('profile');
     Route::get('profile/edit', [StudentProfileController::class, 'edit'])->name('edit-profile');
