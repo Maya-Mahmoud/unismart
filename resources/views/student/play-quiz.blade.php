@@ -12,12 +12,12 @@
             Test your understanding of: <span class="text-purple-600">{{ $file->lecture->title }}</span>
         </p>
 
-        <div id="timer-container" class="mt-6 hidden animate-fade-in">
+        <div id="timer-container" class="mt-6 hidden animate-fade-in flex flex-col items-center gap-4">
             <div class="inline-flex items-center gap-3 bg-white border-2 border-amber-100 px-6 py-2 rounded-2xl shadow-sm">
                 <span class="text-2xl">⏱️</span>
                 <span id="time-clock" class="text-2xl font-black text-amber-600 font-mono">00:00</span>
             </div>
-            <div class="w-64 h-2 bg-gray-100 mx-auto mt-3 rounded-full overflow-hidden border border-gray-50">
+            <div class="w-64 h-2 bg-gray-100 mx-auto mt-1 rounded-full overflow-hidden border border-gray-50">
                 <div id="timer-progress" class="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000" style="width: 100%"></div>
             </div>
         </div>
@@ -43,7 +43,7 @@
             const questions = {!! $quizData !!}; 
             totalQuestions = questions.length;
             
-            // ضبط الوقت: 15 ثانية لكل سؤال كما طلبتِ
+            // 15 ثانية لكل سؤال
             totalInitialTime = totalQuestions * 15;
             timeLeft = totalInitialTime;
             
@@ -90,7 +90,8 @@
 
     function renderStudentQuiz(questions) {
         const container = document.getElementById('quiz-content');
-        container.innerHTML = questions.map((q, index) => `
+        
+        let html = questions.map((q, index) => `
             <div class="bg-white border border-purple-100 p-8 rounded-[2rem] shadow-xl shadow-purple-50/50 mb-6 transition-all animate-fade-in">
                 <div class="flex items-start gap-4 mb-6">
                     <span class="bg-purple-600 text-white w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold shadow-lg shadow-purple-200">
@@ -107,15 +108,27 @@
                         </button>
                     `).join('')}
                 </div>
-                <div class="feedback hidden mt-4 p-4 rounded-xl font-bold text-sm italic"></div>
+                <div class="feedback hidden mt-4 p-4 rounded-xl font-bold text-sm italic text-center"></div>
             </div>
         `).join('');
+
+        // إضافة قسم زر "Finish Quiz" في نهاية القائمة
+        html += `
+            <div id="final-submit-section" class="text-center py-10 hidden animate-fade-in">
+                <button onclick="showFinalResult(false)" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-12 py-5 rounded-[2rem] font-black text-xl shadow-xl shadow-emerald-100 hover:scale-105 active:scale-95 transition-all">
+                    Finish & View Results 🏁
+                </button>
+            </div>
+        `;
+
+        container.innerHTML = html;
     }
 
     function submitAnswer(btn, selected, correct) {
         const parent = btn.closest('.grid');
         const feedback = btn.parentElement.nextElementSibling;
         
+        // تعطيل الأزرار بعد الاختيار
         parent.querySelectorAll('button').forEach(b => {
             b.disabled = true;
             b.style.opacity = "0.6";
@@ -129,17 +142,20 @@
             correctAnswers++;
             btn.classList.replace('border-gray-50', 'border-emerald-500');
             btn.classList.add('bg-emerald-50', 'text-emerald-700');
-            feedback.innerHTML = "✨ Excellent! That's the correct answer.";
+            feedback.innerHTML = "✨ Excellent! Correct Answer.";
             feedback.classList.add('text-emerald-600');
         } else {
             btn.classList.replace('border-gray-50', 'border-rose-500');
             btn.classList.add('bg-rose-50', 'text-rose-700');
-            feedback.innerHTML = `⚠️ Not quite. The correct answer was: ${correct}`;
+            feedback.innerHTML = `⚠️ Incorrect. Correct: ${correct}`;
             feedback.classList.add('text-rose-600');
         }
 
+        // إظهار زر الإنهاء عند الوصول لآخر سؤال
         if (answeredCount === totalQuestions) {
-            setTimeout(() => showFinalResult(false), 1000);
+            document.getElementById('final-submit-section').classList.remove('hidden');
+            // عمل Scroll لأسفل ليرى المستخدم الزر
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         }
     }
 
@@ -149,7 +165,7 @@
 
         const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
 
-        // إرسال النتيجة للداتابيز عبر Route: quiz.save
+        // إرسال النتيجة للداتابيز
         fetch("{{ route('quiz.save') }}", {
             method: "POST",
             headers: {
@@ -164,13 +180,13 @@
             })
         })
         .then(response => response.json())
-        .then(data => console.log("Success:", data))
-        .catch(error => console.error("Error:", error));
+        .then(data => console.log("Database Sync:", data))
+        .catch(error => console.error("Database Sync Error:", error));
 
         const container = document.getElementById('quiz-content');
         const message = isTimeOut 
             ? "⏱️ Time is up! Your answers have been submitted." 
-            : "Your response has been recorded. Good job!";
+            : "Quiz completed successfully! Here is your performance.";
 
         container.innerHTML = `
             <div class="bg-white border-2 border-purple-100 p-12 rounded-[3rem] shadow-2xl text-center animate-bounce-in">
@@ -189,8 +205,10 @@
                     </div>
                 </div>
 
-                <div class="flex justify-center gap-4">
-                     <a href="{{ url('/student/subjects') }}" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-12 py-4 rounded-2xl font-bold shadow-lg shadow-purple-200 hover:scale-105 transition-all">
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                  
+
+                     <a href="{{ url('/student/subjects') }}" class="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center">
                         Back to Library
                     </a>
                 </div>
