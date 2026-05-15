@@ -134,6 +134,7 @@ Route::middleware([AdminOrProfessorMiddleware::class])
 
 // مسارات البروفيسور (Professor Routes) - محمية بـ AdminOrProfessorMiddleware
 Route::middleware([AdminOrProfessorMiddleware::class])->prefix('professor')->name('professor.')->group(function () {
+    
     Route::get('dashboard', function () {
         return redirect()->route('halls.index');
     })->name('dashboard');
@@ -144,6 +145,13 @@ Route::middleware([AdminOrProfessorMiddleware::class])->prefix('professor')->nam
         Route::apiResource('lectures', LectureController::class);
         Route::get('lectures-by-date', [LectureController::class, 'lecturesByDate']);
         Route::get('available-halls', [LectureController::class, 'getAvailableHalls'])->name('available-halls');
+        
+        // File upload routes for lectures (same as admin/api)
+        Route::post('lectures/{lectureId}/files', [LectureController::class, 'uploadFile'])->name('lectures.files.upload');
+        Route::get('lectures/{lectureId}/files', [LectureController::class, 'getFiles'])->name('lectures.files');
+        Route::get('lecture-files/{fileId}/download', [LectureController::class, 'downloadFile'])->name('lecture-files.download');
+        Route::get('lecture-files/{fileId}/view', [LectureController::class, 'viewFile'])->name('lecture-files.view');
+        Route::delete('lecture-files/{fileId}', [LectureController::class, 'deleteFile'])->name('lecture-files.delete');
     });
 });
 

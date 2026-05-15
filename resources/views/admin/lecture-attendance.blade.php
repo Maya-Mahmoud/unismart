@@ -10,15 +10,30 @@
                 <div>
                     <h1 class="text-4xl font-bold text-gray-900"> {{ $lecture->title }}</h1>
                 </div>
-                <button id="exportCsvBtn"
-                    class="flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-green-700 transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
-                    <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-y-1"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
-                    </svg>
-                    Export CSV
-                </button>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 group">
+                        <button onclick="uploadFiles({{ $lecture->id }})" 
+    class="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200 hover:scale-105 active:scale-95 transition-all duration-200 group"
+    title="Upload Lecture Files">
+    
+    <svg class="w-5 h-5 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+    </svg>
+    
+    <span class="font-bold text-sm tracking-wide">Upload Files</span>
+</button>
+                        <span class="text-sm text-gray-600 hidden group-hover:block whitespace-nowrap bg-gray-800 text-white px-2 py-1 rounded text-xs absolute -top-10 left-1/2 -translate-x-1/2 z-50 shadow-lg">رفع ملفات</span>
+                    </div>
+                    <button id="exportCsvBtn"
+                        class="flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-green-700 transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                        <svg class="w-5 h-5 transition-transform duration-300 group-hover:translate-y-1"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 3v12m0 0l4-4m-4 4l-4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                        </svg>
+                        Export CSV
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -279,7 +294,201 @@
         </div>
     </div>
 
+    <!-- Upload File Modal -->
+    <div id="uploadFileModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Upload Lecture Files</h3>
+                    <button id="closeUploadModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div id="filesList" class="mb-4 max-h-40 overflow-y-auto">
+                    <p class="text-sm text-gray-500">No files uploaded yet.</p>
+                </div>
+
+                <form id="uploadFileForm" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" id="uploadLectureId" name="lecture_id" value="{{ $lecture->id }}">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select File</label>
+                        <input type="file" id="lectureFile" name="file" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancelUploadBtn"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                            Close
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                            Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        let apiBaseUrl;
+        // تحديد عنوان URL الخاص بالـ API بناءً على دور المستخدم (copy from management)
+        const userRole = "{{ Auth::user()->role }}";
+        if (userRole === 'professor') {
+            apiBaseUrl = '/professor/api';
+        } else if (userRole === 'admin') {
+            apiBaseUrl = '/admin/api';
+        } else {
+            apiBaseUrl = '';
+        }
+
+        let currentLectureId = {{ $lecture->id }};
+
+        // File upload functions
+        window.uploadFiles = async function(lectureId) {
+            currentLectureId = lectureId;
+            document.getElementById('uploadLectureId').value = lectureId;
+            document.getElementById('uploadFileModal').classList.remove('hidden');
+            await loadFiles(lectureId);
+        };
+
+        async function loadFiles(lectureId) {
+            try {
+                const response = await fetch(`${apiBaseUrl}/lectures/${lectureId}/files`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+                const result = await response.json();
+                
+                const filesList = document.getElementById('filesList');
+                
+                if (result.success && result.data.length > 0) {
+                    filesList.innerHTML = result.data.map(file => `
+                        <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2">
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-700">${file.file_name}</p>
+                                <p class="text-xs text-gray-500">${formatFileSize(file.file_size)}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <a href="/admin/api/lecture-files/${file.id}/download" class="text-blue-600 hover:text-blue-800 text-sm">Download</a>
+                                <button onclick="deleteFile(${file.id})" class="text-red-600 hover:text-red-800 text-sm">Delete</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    filesList.innerHTML = '<p class="text-sm text-gray-500">No files uploaded yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        window.deleteFile = async function(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) return;
+            
+            try {
+                const response = await fetch(`/admin/api/lecture-files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('File deleted successfully!');
+                    await loadFiles(currentLectureId);
+                } else {
+                    alert(result.message || 'Error deleting file');
+                }
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                alert('Error deleting file');
+            }
+        };
+
+        // Upload file form handler
+        const uploadFileForm = document.getElementById('uploadFileForm');
+        uploadFileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!currentLectureId) {
+                alert('No lecture selected');
+                return;
+            }
+
+            const fileInput = document.getElementById('lectureFile');
+            if (!fileInput.files.length) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            // Add CSRF token to FormData for Laravel
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/lectures/${currentLectureId}/files`, {
+                    method: 'POST',
+                    body: formData
+                    // Note: Don't set Content-Type header when using FormData
+                    // The browser will set it with the correct multipart boundary
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('File uploaded successfully!');
+                    fileInput.value = ''; // Reset file input
+                    await loadFiles(currentLectureId);
+                } else {
+                    alert(result.message || 'Error uploading file');
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error uploading file: ' + error.message);
+            }
+        });
+
+        // Upload modal handlers
+        const uploadFileModal = document.getElementById('uploadFileModal');
+        const closeUploadModal = document.getElementById('closeUploadModal');
+        const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+
+        function hideUploadModal() {
+            uploadFileModal.classList.add('hidden');
+            currentLectureId = {{ $lecture->id }};
+        }
+
+        closeUploadModal.addEventListener('click', hideUploadModal);
+        cancelUploadBtn.addEventListener('click', hideUploadModal);
+
+        uploadFileModal.addEventListener('click', function(e) {
+            if (e.target === uploadFileModal) {
+                hideUploadModal();
+            }
+        });
+    </script>
+    
     <script>
         // المتغيرات العالمية للتحكم بالسجل
         let currentConversationId = null;
